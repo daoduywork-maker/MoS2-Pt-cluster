@@ -1,0 +1,16 @@
+SYSTEM  = MoS2 prim ENCUT 550
+ENCUT   = 550
+PREC    = Accurate
+EDIFF   = 1E-5
+ALGO    = Fast
+NELM    = 150
+LASPH   = .TRUE.
+IVDW    = 12          ! D3 with Becke-Johnson damping
+LWAVE   = .FALSE.
+LCHARG  = .FALSE.
+NCORE   = 4           ! adjust to the node (40 cores -> 4 or 5)
+ISPIN   = 1
+ISMEAR  = 0
+SIGMA   = 0.05
+LREAL   = .FALSE.
+NSW     = 0

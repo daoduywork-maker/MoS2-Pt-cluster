@@ -1,0 +1,4 @@
+# Keep Unix line endings everywhere: these files run on a Linux cluster
+* text=auto eol=lf
+*.pdf binary
+*.png binary

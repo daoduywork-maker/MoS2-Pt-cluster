@@ -1,0 +1,18 @@
+#!/bin/bash
+# PBS script for one VASP job. Submit from inside the job folder:  qsub <repo>/run_vasp.pbs
+# Modules and launch line follow the lab's Wuzhou templates (pbs_s40wz_vasp-std.sh).
+#PBS -N p2
+#PBS -q std40
+#PBS -l nodes=1:ppn=40
+#PBS -V
+#PBS -l walltime=240:00:00
+#PBS -j oe
+
+module load intel/intel2020
+module load vasp/vasp544elpa
+
+cd "$PBS_O_WORKDIR"
+nproc=$(wc -l < "$PBS_NODEFILE")
+bin=$(cat vasp_bin 2>/dev/null || echo vasp_std); command -v "$bin" > /dev/null || bin=vasp_std
+[ -f POTCAR ] || { echo "POTCAR missing: run make_potcar.sh here first"; exit 1; }
+mpirun -np $nproc -genv I_MPI_FABRICS=shm:ofi "$bin" > vasp.out

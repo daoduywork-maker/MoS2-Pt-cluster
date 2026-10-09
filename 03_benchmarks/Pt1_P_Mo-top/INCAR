@@ -1,0 +1,21 @@
+SYSTEM  = Pt1 on pristine, Mo-top a=3.1800
+ENCUT   = 450
+PREC    = Accurate
+EDIFF   = 1E-5
+ALGO    = Fast
+NELM    = 150
+LASPH   = .TRUE.
+IVDW    = 12          ! D3 with Becke-Johnson damping
+LWAVE   = .FALSE.
+LCHARG  = .FALSE.
+NCORE   = 4           ! adjust to the node (40 cores -> 4 or 5)
+ISPIN   = 2
+ISMEAR  = 0
+SIGMA   = 0.05
+LREAL   = Auto
+IBRION  = 2
+NSW     = 300
+ISIF    = 2
+EDIFFG  = -0.02
+LDIPOL  = .TRUE.
+IDIPOL  = 3

@@ -1,0 +1,73 @@
+# ---- Papers (kept locally, not pushed) ----
+Literatures/*.pdf
+*.pdf
+!assets/*.pdf
+
+# ---- VASP: licensed pseudopotentials (never commit) ----
+POTCAR
+POTCAR.*
+
+# ---- VASP: large or regenerable outputs ----
+WAVECAR
+WAVEDER
+CHG
+CHGCAR
+AECCAR*
+LOCPOT
+ELFCAR
+PARCHG
+PROCAR
+DOSCAR
+EIGENVAL
+IBZKPT
+PCDAT
+XDATCAR
+REPORT
+OUTCAR
+vasprun.xml
+vaspout.h5
+TMPCAR
+# kept on purpose: INCAR, KPOINTS, POSCAR, vasp_bin, CONTCAR, OSZICAR
+
+# ---- Charge analysis and volumetric data ----
+*.cube
+*.xsf
+ACF.dat
+AVF.dat
+BCF.dat
+
+# ---- Generic data and binary files ----
+data/
+*.dat
+*.npy
+*.npz
+*.h5
+*.hdf5
+*.pkl
+*.traj
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+
+# ---- Cluster job logs ----
+vasp.out
+*.o[0-9]*
+*.e[0-9]*
+*.log
+nohup.out
+
+# ---- Python ----
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+
+# ---- OS and editor ----
+.DS_Store
+Thumbs.db
+desktop.ini
+*~
+*.swp
+.vscode/
+.idea/
