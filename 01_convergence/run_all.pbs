@@ -14,7 +14,7 @@ module load intel/intel2020
 module load vasp/vasp544elpa
 
 # PBE POTCAR directory: must be the folder that directly contains Mo_pv/ S/ Pt/
-export VASP_PP_PATH=/public/shared_data/pot/vasp/544/PAW_PBE
+export VASP_PP_PATH=/public/shared-data/pot/vasp/544/PAW_PBE
 
 cd "$PBS_O_WORKDIR"
 REPO=$(cd .. && pwd)

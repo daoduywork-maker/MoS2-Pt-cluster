@@ -11,7 +11,7 @@ Source for modules, launch line and queues: the lab's Wuzhou job templates (`pbs
 - Modules, in this order: `module load intel/intel2020`, then `module load vasp/vasp544elpa`.
 - Launch line: `mpirun -np $nproc -genv I_MPI_FABRICS=shm:ofi vasp_std`. Scripts carry `#PBS -V`.
 - Other VASP builds installed: `vasp541scala`, `vasp544mod`, `vasp544scala`, `vasp632`, `vasp632vtst`, `vasp632vaspsol`, `vasp632vaspsol.vtst`, `vasp632wannier90`, `vasp643`.
-- POTCARs: `/public/shared_data/pot/vasp/544/` holds `PAW_LDA`, `PAW_PBE`, `PAW_PW91`, `USPP_LDA`, `USPP_PW91`. We use `/public/shared_data/pot/vasp/544/PAW_PBE` (set in `01_convergence/run_all.pbs`). Confirmed present (2026-10-09): `Mo_pv`, `S`, `Pt`; alternatives `Mo`, `Mo_sv`, `Pt_pv` are also there.
+- POTCARs: `/public/shared-data/pot/vasp/544/` holds `PAW_LDA`, `PAW_PBE`, `PAW_PW91`, `USPP_LDA`, `USPP_PW91`. We use `/public/shared-data/pot/vasp/544/PAW_PBE` (set in `01_convergence/run_all.pbs`). Confirmed present (2026-10-09): `Mo_pv`, `S`, `Pt`; alternatives `Mo`, `Mo_sv`, `Pt_pv` are also there.
 - `vasp_gam`: **not yet checked**. Job scripts fall back to `vasp_std` if it is absent.
 
 ## Checklist before every submission
@@ -46,7 +46,7 @@ Source for modules, launch line and queues: the lab's Wuzhou job templates (`pbs
 
 | Date | Step / job | Job ID | Nodes | Result |
 |---|---|---|---|---|
-| | | | | |
+| 2026-10-11 | 01 convergence, `p2_conv` | 217422 | 1 × std40 | Stopped at the pre-flight check, nothing ran: POTCAR path had `shared_data` instead of `shared-data`. Fixed. |
 
 ## Decisions
 
