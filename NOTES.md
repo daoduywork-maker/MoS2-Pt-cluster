@@ -73,6 +73,7 @@ Source for modules, launch line and queues: the lab's Wuzhou job templates (`pbs
 | 2026-10-12 | 01 `run_all.pbs` | 217587 | 4 requested; log shows node12, node9 | **Done**: all 33 converged (10–89 steps); 1 h 52 min; ≤ 0.6 GB. Only 2 distinct hosts appeared in `$PBS_NODEFILE`; not yet investigated. |
 | 2026-10-12 | 02 `test_one.pbs` (Pt atom) | not recorded | 1 × std40 | Passed: 18 CG steps, E0 = −0.568 eV, mag 2.00, 70 s. |
 | 2026-10-12 | 02 `run_all.pbs` | 217589 | 1 × std40 | **Done**: all converged; 3 min. a(MoS₂) = 3.1514 Å, a(Pt) = 3.926 Å, E_coh(Pt) = 6.29 eV. |
+| 2026-10-12 | 03 `test_one.pbs` (`Pt1_V1`, 6×6, 108 atoms) | `p2_test3`, ID not recorded | 1 × std40 | Submitted ~21:40. Waiting for the early report (memory, time per SCF step). `run_all.pbs` (2 nodes) to follow if memory is fine. |
 
 ## Decisions
 
@@ -100,6 +101,7 @@ Source for modules, launch line and queues: the lab's Wuzhou job templates (`pbs
 | 2026-10-12 | a = 3.1514 Å for all 6×6 cells | Step 02 fit |
 | 2026-10-12 | Report every binding energy with and without D3 (E_PBE = E0 − Edisp at the same geometry); re-relax key structures with plain PBE if a conclusion changes | D3 overbinds Pt cohesion by 0.45 eV, which favours clusters and could bias G1 |
 | 2026-10-12 | Step 03: test `Pt1_V1` with an early report after the first ionic step; then the rest on 2 nodes | First 108-atom relaxation; memory and timing unmeasured |
+| 2026-10-12 | Fixed `Edisp` parsing (VASP 5.4.4 prints `Edisp (eV)` without a colon) | Found when reading the step-02 output |
 | 2026-10-12 | Always test one job before a batch | The first batch wasted 5.6 node-hours on settings never tried on one job |
 | 2026-10-09 | NEB kinetics deferred | Not needed to answer G1 |
 | 2026-10-09 | Nanoparticles (~1.9 nm) out of scope; stand-in deferred | Too large for a structure search in this cell |
@@ -115,7 +117,7 @@ Source for modules, launch line and queues: the lab's Wuzhou job templates (`pbs
 | k-mesh, bulk Pt | 21×21×21 | Step 01: 1–6 meV spread between k = 15 and 21 |
 | MoS₂ lattice constant | 3.1514 Å | Step 02 fit (experiment 3.160 Å) |
 | Pt lattice constant | 3.926 Å | Step 02 (experiment 3.924 Å) |
-| Pt cohesive energy | 6.29 eV (PBE+D3) | Step 02 (experiment 5.84 eV): D3 overbinds Pt–Pt |
+| Pt cohesive energy | 6.29 eV (PBE+D3); 5.52 eV plain PBE at the same lattice | Step 02; Edisp(bulk) = −0.777 eV/atom; experiment 5.84 eV |
 
 ## Provisional values (replace when measured)
 

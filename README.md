@@ -6,14 +6,14 @@ Throughout this file, **G1–G3** label the three gaps declared under [The gap](
 
 ## Status
 
-Last updated 2026-10-09. Nothing has been run yet.
+Last updated 2026-10-12. Steps 01–02 done; step 03 test (`Pt1_V1`) running.
 
 | Step | Folder | State |
 |---|---|---|
 | Literature review and scope | `Literatures/` | Done (12 papers; 4 only skimmed; no SI read) |
 | 01 Convergence | `01_convergence/` | **Done** (2026-10-12): 450 eV; Γ adequate for the 6×6 sheet |
 | 02 Lattice constant and references | `02_references/` | **Done** (2026-10-12): a(MoS₂) = 3.1514 Å; a(Pt) = 3.926 Å |
-| 03 Benchmarks | `03_benchmarks/` | Inputs ready (a = 3.1514 Å); `Pt1_V1` test first |
+| 03 Benchmarks | `03_benchmarks/` | **Running**: `Pt1_V1` test submitted 2026-10-12 (job `p2_test3`, 1 node); the other 5 wait for its early report |
 | 04 Vacancy pairs | `04_vacancy_pairs/` | Planned |
 | 05 Ptₙ, n = 1–4 | `05_Ptn_small/` | Planned |
 | 06 Ptₙ, n = 6, 9, 13 | `06_Ptn_large/` | Planned |
@@ -300,9 +300,9 @@ All 10 jobs converged; the bulk relaxation reached the required accuracy.
 |---|---|---|
 | MoS₂ lattice constant | 3.1514 Å (quadratic and cubic fits agree to 0.0001 Å) | Experiment 3.160 Å; plain PBE ~3.18–3.19 Å |
 | Pt lattice constant | 3.926 Å | Experiment 3.924 Å |
-| Pt cohesive energy | 6.29 eV | Experiment 5.84 eV; plain PBE ~5.5 eV |
+| Pt cohesive energy | 6.29 eV; plain PBE at the same lattice 5.52 eV (Edisp = −0.777 eV/atom) | Experiment 5.84 eV |
 
-The cohesive energy is 0.45 eV too high: D3 overbinds Pt–Pt. Because this favours clusters over single atoms, step 03 onward reports binding energies with and without the D3 term (see Methods, step 03).
+PBE+D3 overbinds Pt–Pt by 0.45 eV and plain PBE underbinds it by 0.32 eV; D3 adds 0.78 eV per Pt atom. Experiment lies between the two. Because this favours clusters over single atoms, step 03 onward reports binding energies with and without the D3 term (see Methods, step 03).
 
 
 
