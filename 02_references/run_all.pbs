@@ -1,0 +1,59 @@
+#!/bin/bash
+# Step 02: run all reference jobs on 1 node, one after another (all are small cells).
+# Submit from inside 02_references:   qsub run_all.pbs
+# After the bulk-Pt cell relaxation it builds and runs Pt_bulk/static at the production cutoff.
+# Finished jobs are skipped on resubmission. Needs make_potcar.sh one level up.
+#PBS -N p2_ref
+#PBS -q std40
+#PBS -l nodes=1:ppn=40
+#PBS -V
+#PBS -l walltime=03:00:00
+#PBS -j oe
+
+module load intel/intel2020
+module load vasp/vasp544elpa
+export VASP_PP_PATH=/public/shared-data/pot/vasp/544/PAW_PBE
+ENCUT_PROD=450                                   # production cutoff chosen in step 01
+
+cd "$PBS_O_WORKDIR"
+REPO=$(cd .. && pwd)
+LOG=run_all.log
+for el in Mo_pv S Pt; do
+  [ -f "$VASP_PP_PATH/$el/POTCAR" ] || { echo "STOP: $VASP_PP_PATH/$el/POTCAR not found" | tee -a $LOG; exit 1; }
+done
+[ -f "$REPO/make_potcar.sh" ] || { echo "STOP: make_potcar.sh must sit next to 02_references" | tee -a $LOG; exit 1; }
+echo "=== $(date '+%F %T')  job $PBS_JOBID on: $(sort -u $PBS_NODEFILE | tr '\n' ' ')" >> $LOG
+
+run() {                  # $1 = job folder
+  local d=$1
+  grep -q "General timing" "$d/OUTCAR" 2>/dev/null && return
+  (
+    cd "$d" || exit 1
+    [ -f POTCAR ] || bash "$REPO/make_potcar.sh" > /dev/null || { echo "$d  POTCAR FAILED" >> "$PBS_O_WORKDIR/$LOG"; exit 1; }
+    bin=$(cat vasp_bin); command -v "$bin" > /dev/null || bin=vasp_std
+    t0=$SECONDS
+    mpirun -np 8 -genv I_MPI_FABRICS=shm:ofi "$bin" > vasp.out 2>&1
+    nelm=$(grep -E "^ *NELM *=" INCAR | awk -F= '{print $2+0}')
+    steps=$(awk '/^[A-Z]+ *: *[0-9]+/{n++} /F=/{s=n; n=0} END{print s+0}' OSZICAR 2>/dev/null)
+    nsw=$(grep -E "^ *NSW *=" INCAR | awk -F= '{print $2+0}')
+    if ! grep -q "General timing" OUTCAR 2>/dev/null; then st=FAILED
+    elif [ "$steps" -ge "$nelm" ]; then st="UNCONVERGED($steps/$nelm)"
+    elif [ "$nsw" -gt 0 ] && ! grep -q "reached required accuracy" OUTCAR; then st="NOT_RELAXED"
+    else st="ok($steps steps)"; fi
+    mem=$(grep -i "maximum memory used" OUTCAR 2>/dev/null | awk '{printf "%.1f GB", $5/1048576}')
+    echo "$d  np=8  $bin  $((SECONDS - t0)) s  mem=${mem:-n/a}  $st" >> "$PBS_O_WORKDIR/$LOG"
+  )
+}
+
+for d in $(find . -name INCAR -not -path "./Pt_bulk/static/*" | sed 's|/INCAR$||' | sort); do run "$d"; done
+
+# bulk-Pt energy at the production cutoff, on the relaxed cell
+if [ -f Pt_bulk/CONTCAR ] && [ ! -d Pt_bulk/static ]; then
+  mkdir Pt_bulk/static
+  cp Pt_bulk/CONTCAR Pt_bulk/static/POSCAR
+  cp Pt_bulk/KPOINTS Pt_bulk/POTCAR Pt_bulk/vasp_bin Pt_bulk/static/
+  grep -v -E "^ *(IBRION|ISIF|EDIFFG|NSW|ENCUT) *=" Pt_bulk/INCAR | sed 's/^SYSTEM .*/SYSTEM  = Pt fcc bulk, static at production cutoff/' > Pt_bulk/static/INCAR
+  printf "ENCUT   = %s\nNSW     = 0\n" $ENCUT_PROD >> Pt_bulk/static/INCAR
+fi
+[ -d Pt_bulk/static ] && run ./Pt_bulk/static
+echo "=== $(date '+%F %T')  done" >> $LOG

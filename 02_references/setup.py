@@ -15,7 +15,7 @@ def build(encut, kprim):
         cell, at = st.prim_mos2(a)
         made.append(st.write_job(HERE, "MoS2_ascan/a_%.2f" % a, "MoS2 primitive a=%.2f" % a, "prim_relax", (kprim, kprim, 1), cell, at, encut))
     cell, at = st.fcc_pt()
-    made.append(st.write_job(HERE, "Pt_bulk", "Pt fcc bulk", "bulk_relax", (15, 15, 15), cell, at, 600))
+    made.append(st.write_job(HERE, "Pt_bulk", "Pt fcc bulk", "bulk_relax", (21, 21, 21), cell, at, 600))   # k = 21 chosen in step 01
     made.append(st.write_job(HERE, "Pt_atom", "Pt atom", "atom", (1, 1, 1), st.BOX, [("Pt", 7.0, 7.5, 8.0)], encut))
     made.append(st.write_job(HERE, "S_atom", "S atom", "atom", (1, 1, 1), st.BOX, [("S", 7.0, 7.5, 8.0)], encut))
     return made

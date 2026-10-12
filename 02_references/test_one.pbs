@@ -1,0 +1,29 @@
+#!/bin/bash
+# Step 02 pre-test: run ONE job, the Pt atom, which oscillated in the first step-01 run.
+# Submit from inside 02_references:   qsub test_one.pbs      then:  cat test_one.log
+#PBS -N p2_test2
+#PBS -q std40
+#PBS -l nodes=1:ppn=40
+#PBS -V
+#PBS -l walltime=01:00:00
+#PBS -j oe
+
+module load intel/intel2020
+module load vasp/vasp544elpa
+export VASP_PP_PATH=/public/shared-data/pot/vasp/544/PAW_PBE
+
+cd "$PBS_O_WORKDIR"
+REPO=$(cd .. && pwd)
+d=Pt_atom
+cd $d
+[ -f POTCAR ] || bash "$REPO/make_potcar.sh" > /dev/null || { echo "POTCAR FAILED" > "$PBS_O_WORKDIR/test_one.log"; exit 1; }
+bin=$(cat vasp_bin); command -v "$bin" > /dev/null || bin=vasp_std
+t0=$SECONDS
+mpirun -np 8 -genv I_MPI_FABRICS=shm:ofi "$bin" > vasp.out 2>&1
+steps=$(awk '/^[A-Z]+ *: *[0-9]+/{n++} /F=/{s=n; n=0} END{print s+0}' OSZICAR)
+{
+  echo "$d: $((SECONDS - t0)) s, $steps SCF steps (NELM = 200)"
+  grep -i "maximum memory used" OUTCAR
+  tail -3 OSZICAR
+  echo "Expect: well under 200 steps, energy settling (last dE tiny), E0 near -0.6 eV, mag = 2"
+} > "$PBS_O_WORKDIR/test_one.log"

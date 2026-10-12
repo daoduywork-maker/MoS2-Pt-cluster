@@ -28,7 +28,7 @@ Source for modules, launch line and queues: the lab's Wuzhou job templates (`pbs
 
     # build inputs
     python3 01_convergence/setup.py
-    python3 02_references/setup.py --encut <E> --kprim <k>
+    python3 02_references/setup.py              # defaults = step-01 choices (450 eV, 15x15x1, bulk Pt 21^3)
     python3 03_benchmarks/setup.py --a <a> --encut <E>
 
     # step 01 on the cluster
@@ -38,13 +38,20 @@ Source for modules, launch line and queues: the lab's Wuzhou job templates (`pbs
     qsub run_all.pbs                            # the other 33 jobs on 4 nodes
     cat run_all.log                             # node, time, memory, ok(N steps) / UNCONVERGED / FAILED per job
 
+    # step 02 on the cluster
+    cd 02_references
+    qsub test_one.pbs                           # Pt atom alone, 1 h limit
+    cat test_one.log
+    qsub run_all.pbs                            # the rest + Pt_bulk/static, 1 node
+    cat run_all.log                             # also flags NOT_RELAXED for relaxations
+
     # a single job, inside its folder
     bash <repo>/make_potcar.sh
     qsub <repo>/run_vasp.pbs
 
     # results
     python3 01_convergence/collect.py
-    python3 02_references/fit_lattice.py
+    python3 02_references/collect.py
     python3 03_benchmarks/collect.py
 
 ## Job log
@@ -53,6 +60,8 @@ Source for modules, launch line and queues: the lab's Wuzhou job templates (`pbs
 |---|---|---|---|---|
 | 2026-10-11 | 01 convergence, `p2_conv` | 217422 | 1 × std40 | Stopped at the pre-flight check, nothing ran: POTCAR path had `shared_data` instead of `shared-data`. Fixed. |
 | 2026-10-11 | 01 convergence, `p2_conv` (resubmitted) | not recorded | 1 × std40 | Hit the 6 h walltime after 9 of 40 jobs. **All 9 unconverged**: every job used all 150 SCF steps. Slab energies diverged at the Davidson → RMM-DIIS switch (step 6), e.g. 3×3 V1 at 350 eV reached −197.88 eV at step 5, then −34 778 eV, final E0 +511 eV for Pt1_V1. Pt atom oscillated ±0.025 eV around −0.65 eV. Results discarded; folder renamed `01_convergence_failed` on the cluster. ~5.6 node-hours lost. |
+| 2026-10-12 | 01 `test_one.pbs` (3×3 V1, 350 eV) | not recorded | 1 × std40 | Passed: 54 SCF steps, E0 = −197.52 eV, mag 0.00, 519 s, 0.5 GB. |
+| 2026-10-12 | 01 `run_all.pbs` | 217587 | 4 requested; log shows node12, node9 | **Done**: all 33 converged (10–89 steps); 1 h 52 min; ≤ 0.6 GB. Only 2 distinct hosts appeared in `$PBS_NODEFILE`; not yet investigated. |
 
 ## Decisions
 
@@ -75,19 +84,28 @@ Source for modules, launch line and queues: the lab's Wuzhou job templates (`pbs
 | 2026-10-12 | `ALGO = All` for isolated atoms (step 02) | Direct minimisation; usual cure for oscillating atoms |
 | 2026-10-12 | `KPAR = 4`, `NCORE = 5` for the 3×3 slab jobs (4 irreducible k-points) | Parallelisation only; energies unchanged |
 | 2026-10-12 | Step 01 on 4 nodes, one job per node at a time (`run_all.pbs`); `test_one.pbs` runs a single slab job first | User asked for 4 nodes; jobs are independent, so 4 parallel workers use them fully |
+| 2026-10-12 | ENCUT = 450 eV; Γ for 6×6; 15×15×1 MoS₂ primitive; 21×21×21 bulk Pt | Step 01 results (see Fixed values) |
+| 2026-10-12 | Step 02 on 1 node; Pt atom tested alone first | Ten small cells; the atom is the one job with untested settings (`ALGO = All`) |
 | 2026-10-12 | Always test one job before a batch | The first batch wasted 5.6 node-hours on settings never tried on one job |
 | 2026-10-09 | NEB kinetics deferred | Not needed to answer G1 |
 | 2026-10-09 | Nanoparticles (~1.9 nm) out of scope; stand-in deferred | Too large for a structure search in this cell |
 | 2026-10-09 | Graphene comparison papers not added | Not needed for the current scope |
 
+## Fixed values (measured)
+
+| Quantity | Value | Source |
+|---|---|---|
+| Cutoff | 450 eV | Step 01: Pt binding varies ≤ 1 meV over 350–600 eV; totals ≤ 0.5 meV/atom at 450 eV |
+| k-mesh, 6×6 relaxations | Γ | Step 01: 0.42 meV/atom on the pristine sheet; reconfirmed on the 6×6 cell in step 03 |
+| k-mesh, MoS₂ primitive | 15×15×1 | Step 01: converged from k = 9 |
+| k-mesh, bulk Pt | 21×21×21 | Step 01: 1–6 meV spread between k = 15 and 21 |
+
 ## Provisional values (replace when measured)
 
 | Quantity | Provisional | Source of final value |
 |---|---|---|
-| MoS₂ lattice constant | 3.18 Å | `02_references/fit_lattice.py` |
-| Cutoff | 450 eV | Step 01 |
-| k-mesh, 6×6 relaxations | Γ | Step 01 (`kpts_MoS2`), confirmed in step 03 |
-| Memory, largest job | a few GB (estimate) | `OUTCAR` of `03_benchmarks/Pt1_V1` |
+| MoS₂ lattice constant | 3.18 Å | `02_references/collect.py` |
+| Memory, 6×6 relaxation | a few GB (estimate; 3×3 slabs used ≤ 0.6 GB) | `OUTCAR` of `03_benchmarks/Pt1_V1` |
 | Compute, whole project | 1,000–1,500 node-hours (guess) | Step 03 timings |
 
 ## Open questions

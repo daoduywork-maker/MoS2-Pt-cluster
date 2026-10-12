@@ -11,8 +11,8 @@ Last updated 2026-10-09. Nothing has been run yet.
 | Step | Folder | State |
 |---|---|---|
 | Literature review and scope | `Literatures/` | Done (12 papers; 4 only skimmed; no SI read) |
-| 01 Convergence | `01_convergence/` | First run discarded (SCF diverged, see `NOTES.md`); inputs fixed, rerun pending |
-| 02 Lattice constant and references | `02_references/` | Inputs ready, provisional settings |
+| 01 Convergence | `01_convergence/` | **Done** (2026-10-12): 450 eV; Γ adequate for the 6×6 sheet |
+| 02 Lattice constant and references | `02_references/` | Inputs ready with the step-01 settings |
 | 03 Benchmarks | `03_benchmarks/` | Inputs ready, provisional lattice constant |
 | 04 Vacancy pairs | `04_vacancy_pairs/` | Planned |
 | 05 Ptₙ, n = 1–4 | `05_Ptn_small/` | Planned |
@@ -153,7 +153,7 @@ The scope is exactly what G1–G3 require.
 | Cell | 6×6 MoS₂ monolayer (108 atoms), 24 Å cell height | Keeps Pt₁₃ > 10 Å from its image |
 | Functional | PBE + D3 (Becke–Johnson damping), spin-polarised | Matches Yan 2025, which says only "DFT-D3" |
 | POTCARs | `Mo_pv`, `S`, `Pt` | `Mo_sv` is the alternative |
-| Cutoff / k-points | 450 eV; Γ for relaxation, 3×3×1 for final energies | Provisional; fixed by step 01 |
+| Cutoff / k-points | 450 eV; Γ for 6×6 relaxations; MoS₂ primitive 15×15×1; bulk Pt 21×21×21 | Fixed by step 01; Γ confirmed again on the 6×6 cell in step 03 |
 | Convergence | Forces < 0.02 eV/Å; dipole correction | Pt on one side only |
 | Electronic | `ALGO = Normal`; `AMIX = 0.2`, `BMIX = 0.0001` (+ magnetic counterparts); `MAGMOM` Mo 0.5, S 0, Pt 1 μB; `NELM = 200` | `ALGO = Fast` diverged in the slabs; isolated atoms use `ALGO = All` |
 | Lattice | Fixed at the fitted pristine constant | 3.18 Å provisional until step 02 |
@@ -230,7 +230,7 @@ All single points on fixed geometries.
 
 **Checks**
 
-- After the bulk relaxation, run a single point in `Pt_bulk/static` at the production cutoff, so the bulk energy matches everything else.
+- After the bulk relaxation, `run_all.pbs` builds and runs `Pt_bulk/static` at the production cutoff, so the bulk energy matches everything else.
 - The Pt atom is forced to a triplet. Atomic references are delicate in PBE; bulk Pt is the safer reference for conclusions.
 
 ### Step 03 — Benchmarks
@@ -273,7 +273,24 @@ Designed in outline in the overview table. Each gets its steps table, validation
 
 ## Results so far
 
-No calculations have been run.
+### Step 01 — Convergence (2026-10-12)
+
+All 34 single points converged (10–89 SCF steps). Differences are against the largest setting.
+
+| Test | Result | Converged at |
+|---|---|---|
+| Pt binding in V1 vs cutoff (3×3, unrelaxed, bulk-Pt reference) | Varies by ≤ 1.0 meV over 350–600 eV | 350 eV |
+| MoS₂ primitive, total vs cutoff | 0.45 meV/atom at 450 eV | 400 eV |
+| Bulk Pt, total vs cutoff | 0.31 meV/atom at 450 eV | 400 eV |
+| MoS₂ primitive vs k-mesh | 0.42 meV/atom at k = 6 (= Γ on 6×6); 0.02 at k = 9 | k = 9 |
+| Bulk Pt vs k-mesh | 1–6 meV spread between k = 15 and 21 | k = 21 used |
+
+**Chosen:** ENCUT = 450 eV; Γ-only for 6×6 relaxations; 15×15×1 for the MoS₂ lattice scan; 21×21×21 for bulk Pt.
+
+The unrelaxed 3×3 test binding of Pt in V1 relative to bulk Pt is −0.23 eV. This is a fixed test geometry, not a result; the relaxed value comes from step 03.
+
+Cost: slab jobs 6–37 min on 40 cores, ≤ 0.6 GB memory; small cells seconds.
+
 
 From the literature alone (inference from combining papers with different setups; see section 6 of the literature review):
 
@@ -336,7 +353,9 @@ From the literature alone (inference from combining papers with different setups
 | File | Purpose |
 |---|---|
 | `setup.py` | Builds the lattice scan and reference jobs. Options: `--encut`, `--kprim`. |
-| `fit_lattice.py` | Fits the scan to a parabola and prints the lattice constant. |
+| `test_one.pbs` | Runs the Pt atom alone first (it oscillated in the first step-01 run). |
+| `run_all.pbs` | Runs all 10 jobs on 1 node, then builds and runs `Pt_bulk/static` at 450 eV. |
+| `collect.py` | Fits the lattice constant and prints the reference energies, their convergence status, and the Pt cohesive energy. |
 | `MoS2_ascan/`, `Pt_bulk/`, `Pt_atom/`, `S_atom/` | Job folders. |
 
 **`03_benchmarks/`**
@@ -368,7 +387,7 @@ From the literature alone (inference from combining papers with different setups
 Requirements: Python 3 (standard library only) to build inputs; VASP 5.4.x with the PBE POTCAR library to run them.
 
 1. **Step 01.** `python3 01_convergence/setup.py`. On the cluster, with `make_potcar.sh` next to `01_convergence`: `qsub test_one.pbs`, check `test_one.log`, then `qsub run_all.pbs`. When it finishes, `python3 01_convergence/collect.py`. Choose the cutoff `E` and the primitive-cell mesh `k`.
-2. **Step 02.** `python3 02_references/setup.py --encut E --kprim k`, run, then `python3 02_references/fit_lattice.py` to get the lattice constant `a`. Add the `Pt_bulk/static` single point.
+2. **Step 02.** `python3 02_references/setup.py` (defaults are the step-01 choices). On the cluster: `qsub test_one.pbs`, check `test_one.log`, then `qsub run_all.pbs`. Then `python3 02_references/collect.py` gives the lattice constant `a`.
 3. **Step 03.** `python3 03_benchmarks/setup.py --a a --encut E`. Run `Pt1_V1` first as the memory and timing test, then the rest. `python3 03_benchmarks/collect.py` prints the benchmarks.
 
 To run a single job on the cluster (steps 02 onward):
