@@ -1,0 +1,28 @@
+#!/bin/bash
+# Step 01 pre-test: run ONE slab job (3x3 V1 at 350 eV) to check the electronic loop converges.
+# Submit from inside 01_convergence:   qsub test_one.pbs      then:  cat test_one.log
+#PBS -N p2_test
+#PBS -q std40
+#PBS -l nodes=1:ppn=40
+#PBS -V
+#PBS -l walltime=01:00:00
+#PBS -j oe
+
+module load intel/intel2020
+module load vasp/vasp544elpa
+export VASP_PP_PATH=/public/shared-data/pot/vasp/544/PAW_PBE
+
+cd "$PBS_O_WORKDIR"
+REPO=$(cd .. && pwd)
+d=encut_binding/encut_350/V1
+cd $d
+[ -f POTCAR ] || bash "$REPO/make_potcar.sh" > /dev/null || { echo "POTCAR FAILED" > "$PBS_O_WORKDIR/test_one.log"; exit 1; }
+t0=$SECONDS
+mpirun -np 40 -genv I_MPI_FABRICS=shm:ofi vasp_std > vasp.out 2>&1
+steps=$(awk '/^[A-Z]+ *: *[0-9]+/{n++} /F=/{s=n; n=0} END{print s+0}' OSZICAR)
+{
+  echo "$d: $((SECONDS - t0)) s, $steps SCF steps (NELM = 200)"
+  grep -i "maximum memory used" OUTCAR
+  tail -1 OSZICAR
+  echo "Expect: well under 200 steps and E0 near -197.9 eV"
+} > "$PBS_O_WORKDIR/test_one.log"

@@ -1,13 +1,14 @@
 #!/bin/bash
-# Step 01: run all 40 convergence jobs one after another in a single PBS job.
+# Step 01: run all 34 convergence jobs on 4 nodes, one job per node at a time.
 # Submit from inside 01_convergence:   qsub run_all.pbs
-# Finished jobs are skipped, so the script can be resubmitted after a failure.
+# Each node works through a shared job list; finished jobs are skipped on resubmission.
+# Needs make_potcar.sh one level up (next to 01_convergence).
 # Modules and launch line follow the lab's Wuzhou templates (pbs_s40wz_vasp-std.sh).
 #PBS -N p2_conv
 #PBS -q std40
-#PBS -l nodes=1:ppn=40
+#PBS -l nodes=4:ppn=40
 #PBS -V
-#PBS -l walltime=06:00:00
+#PBS -l walltime=12:00:00
 #PBS -j oe
 
 module load intel/intel2020
@@ -18,26 +19,46 @@ export VASP_PP_PATH=/public/shared-data/pot/vasp/544/PAW_PBE
 
 cd "$PBS_O_WORKDIR"
 REPO=$(cd .. && pwd)
+LOG=run_all.log
 
 # pre-flight checks: stop before running anything if the setup is wrong
 for el in Mo_pv S Pt; do
-  [ -f "$VASP_PP_PATH/$el/POTCAR" ] || { echo "STOP: $VASP_PP_PATH/$el/POTCAR not found" | tee run_all.log; exit 1; }
+  [ -f "$VASP_PP_PATH/$el/POTCAR" ] || { echo "STOP: $VASP_PP_PATH/$el/POTCAR not found" | tee -a $LOG; exit 1; }
 done
-grep -q "PAW_PBE" "$VASP_PP_PATH/Pt/POTCAR" || { echo "STOP: $VASP_PP_PATH is not a PBE set" | tee run_all.log; exit 1; }
-[ -f "$REPO/make_potcar.sh" ] || { echo "STOP: make_potcar.sh must sit next to 01_convergence" | tee run_all.log; exit 1; }
+grep -q "PAW_PBE" "$VASP_PP_PATH/Pt/POTCAR" || { echo "STOP: $VASP_PP_PATH is not a PBE set" | tee -a $LOG; exit 1; }
+[ -f "$REPO/make_potcar.sh" ] || { echo "STOP: make_potcar.sh must sit next to 01_convergence" | tee -a $LOG; exit 1; }
 
-for d in $(find . -name INCAR | sed 's|/INCAR$||' | sort); do
-  (
-    cd "$d" || exit 1
-    if grep -q "General timing" OUTCAR 2>/dev/null; then echo "$d  skipped (already finished)"; exit 0; fi
-    [ -f POTCAR ] || bash "$REPO/make_potcar.sh" > /dev/null || { echo "$d  POTCAR FAILED"; exit 1; }
-    nat=$(sed -n '7p' POSCAR | awk '{s=0; for(i=1;i<=NF;i++) s+=$i; print s}')
-    np=40; [ "$nat" -le 3 ] && np=8                       # tiny cells: fewer MPI ranks
-    bin=$(cat vasp_bin); command -v "$bin" > /dev/null || bin=vasp_std   # fall back if vasp_gam is absent
-    t0=$SECONDS
-    mpirun -np $np -genv I_MPI_FABRICS=shm:ofi "$bin" > vasp.out 2>&1
-    if grep -q "General timing" OUTCAR 2>/dev/null; then st=ok; else st=FAILED; fi
-    mem=$(grep "maximum memory used" OUTCAR 2>/dev/null | awk '{printf "%.1f GB", $5/1048576}')
-    echo "$d  np=$np  $bin  $((SECONDS - t0)) s  mem=${mem:-n/a}  $st"
-  )
-done | tee run_all.log
+# job list: the big 3x3 slab jobs first, so the long ones start early
+JOBS=$( (find ./encut_binding -name INCAR; find . -name INCAR -not -path "./encut_binding/*") | sed 's|/INCAR$||')
+find . -name .claimed -type d -exec rmdir {} + 2>/dev/null     # clear claims left by a killed run
+echo "=== $(date '+%F %T')  job $PBS_JOBID on: $(sort -u $PBS_NODEFILE | tr '\n' ' ')" >> $LOG
+
+worker() {               # $1 = host this worker runs on
+  local host=$1
+  for d in $JOBS; do
+    grep -q "General timing" "$d/OUTCAR" 2>/dev/null && continue        # finished earlier
+    mkdir "$d/.claimed" 2>/dev/null || continue                         # another node took it
+    (
+      cd "$d" || exit 1
+      [ -f POTCAR ] || bash "$REPO/make_potcar.sh" > /dev/null || { echo "$d  POTCAR FAILED" >> "$PBS_O_WORKDIR/$LOG"; exit 1; }
+      nat=$(sed -n '7p' POSCAR | awk '{s=0; for(i=1;i<=NF;i++) s+=$i; print s}')
+      np=40; [ "$nat" -le 3 ] && np=8                                   # tiny cells: fewer MPI ranks
+      bin=$(cat vasp_bin); command -v "$bin" > /dev/null || bin=vasp_std
+      t0=$SECONDS
+      mpirun -np $np -hosts $host -genv I_MPI_FABRICS=shm:ofi "$bin" > vasp.out 2>&1
+      # status: did VASP finish, and did the electronic loop converge before NELM?
+      nelm=$(grep -E "^ *NELM *=" INCAR | awk -F= '{print $2+0}')
+      steps=$(awk '/^[A-Z]+ *: *[0-9]+/{n++} /F=/{s=n; n=0} END{print s+0}' OSZICAR 2>/dev/null)
+      if ! grep -q "General timing" OUTCAR 2>/dev/null; then st=FAILED
+      elif [ "$steps" -ge "$nelm" ]; then st="UNCONVERGED($steps/$nelm)"
+      else st="ok($steps steps)"; fi
+      mem=$(grep -i "maximum memory used" OUTCAR 2>/dev/null | awk '{printf "%.1f GB", $5/1048576}')
+      echo "$d  $host  np=$np  $bin  $((SECONDS - t0)) s  mem=${mem:-n/a}  $st" >> "$PBS_O_WORKDIR/$LOG"
+    )
+    rmdir "$d/.claimed"
+  done
+}
+
+for h in $(sort -u $PBS_NODEFILE); do worker "$h" & done
+wait
+echo "=== $(date '+%F %T')  done" >> $LOG

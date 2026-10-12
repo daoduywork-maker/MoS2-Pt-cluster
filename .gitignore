@@ -71,3 +71,6 @@ desktop.ini
 *.swp
 .vscode/
 .idea/
+
+# ---- Files moved aside for the user to delete ----
+_to_delete/

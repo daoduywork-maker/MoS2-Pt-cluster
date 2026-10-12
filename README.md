@@ -11,7 +11,7 @@ Last updated 2026-10-09. Nothing has been run yet.
 | Step | Folder | State |
 |---|---|---|
 | Literature review and scope | `Literatures/` | Done (12 papers; 4 only skimmed; no SI read) |
-| 01 Convergence | `01_convergence/` | Inputs ready |
+| 01 Convergence | `01_convergence/` | First run discarded (SCF diverged, see `NOTES.md`); inputs fixed, rerun pending |
 | 02 Lattice constant and references | `02_references/` | Inputs ready, provisional settings |
 | 03 Benchmarks | `03_benchmarks/` | Inputs ready, provisional lattice constant |
 | 04 Vacancy pairs | `04_vacancy_pairs/` | Planned |
@@ -155,6 +155,7 @@ The scope is exactly what G1–G3 require.
 | POTCARs | `Mo_pv`, `S`, `Pt` | `Mo_sv` is the alternative |
 | Cutoff / k-points | 450 eV; Γ for relaxation, 3×3×1 for final energies | Provisional; fixed by step 01 |
 | Convergence | Forces < 0.02 eV/Å; dipole correction | Pt on one side only |
+| Electronic | `ALGO = Normal`; `AMIX = 0.2`, `BMIX = 0.0001` (+ magnetic counterparts); `MAGMOM` Mo 0.5, S 0, Pt 1 μB; `NELM = 200` | `ALGO = Fast` diverged in the slabs; isolated atoms use `ALGO = All` |
 | Lattice | Fixed at the fitted pristine constant | 3.18 Å provisional until step 02 |
 | Pt reference | Isolated atom and bulk Pt | Bulk decides "will it sinter" |
 
@@ -183,7 +184,7 @@ The scope is exactly what G1–G3 require.
 
 | Step | What | Size | Serves | Done when |
 |---|---|---|---|---|
-| 01 | Cutoff and k-mesh convergence on small cells | 40 single points | All | Settings converged |
+| 01 | Cutoff and k-mesh convergence on small cells | 34 single points | All | Settings converged |
 | 02 | MoS₂ lattice constant; bulk Pt, Pt atom, S atom | 10 jobs | All | Lattice constant fitted |
 | 03 | 6×6 benchmarks: P, V1, Pt₁ on three pristine sites, Pt₁ in V1 | 6 relaxations | All | Pt in V1 within ~0.2 eV of Li 2017 |
 | 04 | Vacancy pair energies at 1st, 2nd, 3rd neighbour (fixed and relaxed cell) | ~8 jobs | G1 | Random-vacancy model confirmed or revised |
@@ -204,7 +205,7 @@ All single points on fixed geometries.
 | `encut_Pt_bulk/encut_350` … `encut_600` | Cutoff | fcc Pt (1 atom) | 15×15×15 |
 | `kpts_MoS2/k_06` … `k_18` | k-mesh k×k×1 | MoS₂ primitive cell | 450 eV |
 | `kpts_Pt_bulk/k_09` … `k_21` | k-mesh k×k×k | fcc Pt | 450 eV |
-| `encut_binding/encut_*/{V1, Pt1_V1, Pt_atom}` | Cutoff | 3×3 MoS₂ with one S vacancy, with and without Pt; Pt atom | 4×4×1 |
+| `encut_binding/encut_*/{V1, Pt1_V1}` | Cutoff | 3×3 MoS₂ with one S vacancy, with and without Pt; Pt reference = `encut_Pt_bulk` at the same cutoff | 4×4×1 |
 
 **Validation targets**
 
@@ -324,8 +325,9 @@ From the literature alone (inference from combining papers with different setups
 
 | File | Purpose |
 |---|---|
-| `setup.py` | Builds the 40 convergence jobs. Option: `--a`. |
-| `run_all.pbs` | One PBS job that runs all 40 jobs in sequence, builds each `POTCAR`, skips finished jobs, and logs time and memory per job to `run_all.log`. |
+| `setup.py` | Builds the 34 convergence jobs. Option: `--a`. |
+| `test_one.pbs` | Runs one slab job (3×3 `V1`, 350 eV) on 1 node for 1 h, to check the SCF converges before the batch. |
+| `run_all.pbs` | Runs all jobs on 4 nodes, one job per node at a time; builds each `POTCAR`, skips finished jobs, and logs node, time, memory and convergence status to `run_all.log`. |
 | `collect.py` | Prints the convergence tables against the targets. |
 | `encut_MoS2/`, `encut_Pt_bulk/`, `kpts_MoS2/`, `kpts_Pt_bulk/`, `encut_binding/` | Job folders, one per setting. |
 
@@ -365,7 +367,7 @@ From the literature alone (inference from combining papers with different setups
 
 Requirements: Python 3 (standard library only) to build inputs; VASP 5.4.x with the PBE POTCAR library to run them.
 
-1. **Step 01.** `python3 01_convergence/setup.py`. On the cluster, set the module name and `VASP_PP_PATH` in `01_convergence/run_all.pbs`, then `cd 01_convergence && qsub run_all.pbs`. When it finishes, `python3 01_convergence/collect.py`. Choose the cutoff `E` and the primitive-cell mesh `k`.
+1. **Step 01.** `python3 01_convergence/setup.py`. On the cluster, with `make_potcar.sh` next to `01_convergence`: `qsub test_one.pbs`, check `test_one.log`, then `qsub run_all.pbs`. When it finishes, `python3 01_convergence/collect.py`. Choose the cutoff `E` and the primitive-cell mesh `k`.
 2. **Step 02.** `python3 02_references/setup.py --encut E --kprim k`, run, then `python3 02_references/fit_lattice.py` to get the lattice constant `a`. Add the `Pt_bulk/static` single point.
 3. **Step 03.** `python3 03_benchmarks/setup.py --a a --encut E`. Run `Pt1_V1` first as the memory and timing test, then the rest. `python3 03_benchmarks/collect.py` prints the benchmarks.
 
