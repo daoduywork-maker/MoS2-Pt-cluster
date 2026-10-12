@@ -138,7 +138,7 @@ def last_edisp(job_dir):
     import re
     f = os.path.join(job_dir, "OUTCAR")
     if not os.path.exists(f): return None
-    v = re.findall(r"Edisp \(eV\):\s*([-+.\dE]+)", open(f, errors="ignore").read())
+    v = re.findall(r"Edisp \(eV\):?\s*([-+.\dE]+)", open(f, errors="ignore").read())
     return float(v[-1]) if v else None
 
 def last_energy(job_dir):
