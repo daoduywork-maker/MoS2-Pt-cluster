@@ -12,8 +12,8 @@ Last updated 2026-10-09. Nothing has been run yet.
 |---|---|---|
 | Literature review and scope | `Literatures/` | Done (12 papers; 4 only skimmed; no SI read) |
 | 01 Convergence | `01_convergence/` | **Done** (2026-10-12): 450 eV; Γ adequate for the 6×6 sheet |
-| 02 Lattice constant and references | `02_references/` | Inputs ready with the step-01 settings |
-| 03 Benchmarks | `03_benchmarks/` | Inputs ready, provisional lattice constant |
+| 02 Lattice constant and references | `02_references/` | **Done** (2026-10-12): a(MoS₂) = 3.1514 Å; a(Pt) = 3.926 Å |
+| 03 Benchmarks | `03_benchmarks/` | Inputs ready (a = 3.1514 Å); `Pt1_V1` test first |
 | 04 Vacancy pairs | `04_vacancy_pairs/` | Planned |
 | 05 Ptₙ, n = 1–4 | `05_Ptn_small/` | Planned |
 | 06 Ptₙ, n = 6, 9, 13 | `06_Ptn_large/` | Planned |
@@ -254,7 +254,8 @@ Li 2017 used PBE-D2 and Saidi 2015 plain PBE, so our PBE-D3 values should fall n
 
 **Checks**
 
-- **Memory and timing:** run `Pt1_V1` alone first and read "maximum memory used" and the time per ionic step in `OUTCAR`. The estimate is a few GB against 92 GB per node, but it has not been measured.
+- **Memory and timing:** `test_one.pbs` relaxes `Pt1_V1` alone and writes an early report after the first ionic step (memory, time per SCF step). `run_all.pbs` (2 nodes) can be submitted once that looks fine; it leaves `Pt1_V1` to the test.
+- **D3 versus plain PBE:** D3 overbinds bulk Pt (cohesive energy 6.29 eV against 5.84 eV experiment), which favours Pt–Pt over Pt–substrate bonding and could bias G1. D3 is a pure additive term, so the plain-PBE energy at the same geometry is E0 − Edisp; `collect.py` prints every binding energy both ways at no extra cost. If a conclusion changes between the two, the key structures are relaxed again with plain PBE.
 - **Confirmation on the real cell:** single points of relaxed `V1` and `Pt1_V1` at the next cutoff up and at 2×2×1 and 3×3×1. The binding energy should change by less than 20 meV.
 - The pristine sheet should come out non-magnetic.
 
@@ -290,6 +291,19 @@ All 34 single points converged (10–89 SCF steps). Differences are against the 
 The unrelaxed 3×3 test binding of Pt in V1 relative to bulk Pt is −0.23 eV. This is a fixed test geometry, not a result; the relaxed value comes from step 03.
 
 Cost: slab jobs 6–37 min on 40 cores, ≤ 0.6 GB memory; small cells seconds.
+
+### Step 02 — Lattice constant and references (2026-10-12)
+
+All 10 jobs converged; the bulk relaxation reached the required accuracy.
+
+| Quantity | Ours (PBE+D3) | Reference |
+|---|---|---|
+| MoS₂ lattice constant | 3.1514 Å (quadratic and cubic fits agree to 0.0001 Å) | Experiment 3.160 Å; plain PBE ~3.18–3.19 Å |
+| Pt lattice constant | 3.926 Å | Experiment 3.924 Å |
+| Pt cohesive energy | 6.29 eV | Experiment 5.84 eV; plain PBE ~5.5 eV |
+
+The cohesive energy is 0.45 eV too high: D3 overbinds Pt–Pt. Because this favours clusters over single atoms, step 03 onward reports binding energies with and without the D3 term (see Methods, step 03).
+
 
 
 From the literature alone (inference from combining papers with different setups; see section 6 of the literature review):
@@ -363,7 +377,9 @@ From the literature alone (inference from combining papers with different setups
 | File | Purpose |
 |---|---|
 | `setup.py` | Builds the six 6×6 jobs. Options: `--a`, `--encut`. |
-| `collect.py` | Gathers energies (with the references from step 02) and prints the benchmarks next to literature values. |
+| `collect.py` | Gathers energies (with the references from step 02) and prints the benchmarks next to literature values, with and without the D3 term. |
+| `test_one.pbs` | Relaxes `Pt1_V1` alone on 1 node; early report of memory and time after the first ionic step. |
+| `run_all.pbs` | Relaxes the rest on 2 nodes, one job per node; restarts a relaxation cut off by the walltime from its `CONTCAR`. |
 | `P/`, `V1/`, `Pt1_P_Mo-top/`, `Pt1_P_S-top/`, `Pt1_P_hollow/`, `Pt1_V1/` | Job folders. |
 
 **`04_vacancy_pairs/` to `08_hydrogen/`** — empty placeholders (`.gitkeep`) for the planned steps.
@@ -388,7 +404,7 @@ Requirements: Python 3 (standard library only) to build inputs; VASP 5.4.x with 
 
 1. **Step 01.** `python3 01_convergence/setup.py`. On the cluster, with `make_potcar.sh` next to `01_convergence`: `qsub test_one.pbs`, check `test_one.log`, then `qsub run_all.pbs`. When it finishes, `python3 01_convergence/collect.py`. Choose the cutoff `E` and the primitive-cell mesh `k`.
 2. **Step 02.** `python3 02_references/setup.py` (defaults are the step-01 choices). On the cluster: `qsub test_one.pbs`, check `test_one.log`, then `qsub run_all.pbs`. Then `python3 02_references/collect.py` gives the lattice constant `a`.
-3. **Step 03.** `python3 03_benchmarks/setup.py --a a --encut E`. Run `Pt1_V1` first as the memory and timing test, then the rest. `python3 03_benchmarks/collect.py` prints the benchmarks.
+3. **Step 03.** `python3 03_benchmarks/setup.py` (defaults a = 3.1514 Å, 450 eV). On the cluster: `qsub test_one.pbs`, read the early report in `test_one.log`, then `qsub run_all.pbs`. `python3 03_benchmarks/collect.py` prints the benchmarks, with and without D3.
 
 To run a single job on the cluster (steps 02 onward):
 

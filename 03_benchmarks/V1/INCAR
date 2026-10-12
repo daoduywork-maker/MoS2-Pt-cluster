@@ -1,4 +1,4 @@
-SYSTEM  = MoS2 6x6 one S vacancy a=3.1800
+SYSTEM  = MoS2 6x6 one S vacancy a=3.1514
 ENCUT   = 450
 PREC    = Accurate
 EDIFF   = 1E-5

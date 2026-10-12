@@ -45,6 +45,15 @@ Source for modules, launch line and queues: the lab's Wuzhou job templates (`pbs
     qsub run_all.pbs                            # the rest + Pt_bulk/static, 1 node
     cat run_all.log                             # also flags NOT_RELAXED for relaxations
 
+    # step 03 on the cluster
+    cd 03_benchmarks
+    qsub test_one.pbs                           # Pt1_V1 alone; early report after the first ionic step
+    cat test_one.log                            # memory, time per SCF step
+    qsub run_all.pbs                            # the other 5 on 2 nodes; skips Pt1_V1 while the test runs
+
+    # plain-PBE energy of any finished job: E0 - Edisp
+    grep -i edisp OUTCAR | tail -1
+
     # a single job, inside its folder
     bash <repo>/make_potcar.sh
     qsub <repo>/run_vasp.pbs
@@ -62,6 +71,8 @@ Source for modules, launch line and queues: the lab's Wuzhou job templates (`pbs
 | 2026-10-11 | 01 convergence, `p2_conv` (resubmitted) | not recorded | 1 × std40 | Hit the 6 h walltime after 9 of 40 jobs. **All 9 unconverged**: every job used all 150 SCF steps. Slab energies diverged at the Davidson → RMM-DIIS switch (step 6), e.g. 3×3 V1 at 350 eV reached −197.88 eV at step 5, then −34 778 eV, final E0 +511 eV for Pt1_V1. Pt atom oscillated ±0.025 eV around −0.65 eV. Results discarded; folder renamed `01_convergence_failed` on the cluster. ~5.6 node-hours lost. |
 | 2026-10-12 | 01 `test_one.pbs` (3×3 V1, 350 eV) | not recorded | 1 × std40 | Passed: 54 SCF steps, E0 = −197.52 eV, mag 0.00, 519 s, 0.5 GB. |
 | 2026-10-12 | 01 `run_all.pbs` | 217587 | 4 requested; log shows node12, node9 | **Done**: all 33 converged (10–89 steps); 1 h 52 min; ≤ 0.6 GB. Only 2 distinct hosts appeared in `$PBS_NODEFILE`; not yet investigated. |
+| 2026-10-12 | 02 `test_one.pbs` (Pt atom) | not recorded | 1 × std40 | Passed: 18 CG steps, E0 = −0.568 eV, mag 2.00, 70 s. |
+| 2026-10-12 | 02 `run_all.pbs` | 217589 | 1 × std40 | **Done**: all converged; 3 min. a(MoS₂) = 3.1514 Å, a(Pt) = 3.926 Å, E_coh(Pt) = 6.29 eV. |
 
 ## Decisions
 
@@ -86,6 +97,9 @@ Source for modules, launch line and queues: the lab's Wuzhou job templates (`pbs
 | 2026-10-12 | Step 01 on 4 nodes, one job per node at a time (`run_all.pbs`); `test_one.pbs` runs a single slab job first | User asked for 4 nodes; jobs are independent, so 4 parallel workers use them fully |
 | 2026-10-12 | ENCUT = 450 eV; Γ for 6×6; 15×15×1 MoS₂ primitive; 21×21×21 bulk Pt | Step 01 results (see Fixed values) |
 | 2026-10-12 | Step 02 on 1 node; Pt atom tested alone first | Ten small cells; the atom is the one job with untested settings (`ALGO = All`) |
+| 2026-10-12 | a = 3.1514 Å for all 6×6 cells | Step 02 fit |
+| 2026-10-12 | Report every binding energy with and without D3 (E_PBE = E0 − Edisp at the same geometry); re-relax key structures with plain PBE if a conclusion changes | D3 overbinds Pt cohesion by 0.45 eV, which favours clusters and could bias G1 |
+| 2026-10-12 | Step 03: test `Pt1_V1` with an early report after the first ionic step; then the rest on 2 nodes | First 108-atom relaxation; memory and timing unmeasured |
 | 2026-10-12 | Always test one job before a batch | The first batch wasted 5.6 node-hours on settings never tried on one job |
 | 2026-10-09 | NEB kinetics deferred | Not needed to answer G1 |
 | 2026-10-09 | Nanoparticles (~1.9 nm) out of scope; stand-in deferred | Too large for a structure search in this cell |
@@ -99,12 +113,14 @@ Source for modules, launch line and queues: the lab's Wuzhou job templates (`pbs
 | k-mesh, 6×6 relaxations | Γ | Step 01: 0.42 meV/atom on the pristine sheet; reconfirmed on the 6×6 cell in step 03 |
 | k-mesh, MoS₂ primitive | 15×15×1 | Step 01: converged from k = 9 |
 | k-mesh, bulk Pt | 21×21×21 | Step 01: 1–6 meV spread between k = 15 and 21 |
+| MoS₂ lattice constant | 3.1514 Å | Step 02 fit (experiment 3.160 Å) |
+| Pt lattice constant | 3.926 Å | Step 02 (experiment 3.924 Å) |
+| Pt cohesive energy | 6.29 eV (PBE+D3) | Step 02 (experiment 5.84 eV): D3 overbinds Pt–Pt |
 
 ## Provisional values (replace when measured)
 
 | Quantity | Provisional | Source of final value |
 |---|---|---|
-| MoS₂ lattice constant | 3.18 Å | `02_references/collect.py` |
 | Memory, 6×6 relaxation | a few GB (estimate; 3×3 slabs used ≤ 0.6 GB) | `OUTCAR` of `03_benchmarks/Pt1_V1` |
 | Compute, whole project | 1,000–1,500 node-hours (guess) | Step 03 timings |
 

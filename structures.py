@@ -132,6 +132,15 @@ def scf_status(job_dir):
     m = re.search(r"NELM\s*=\s*(\d+)", open(os.path.join(job_dir, "INCAR")).read())
     return steps, int(m.group(1)) if m else 60
 
+def last_edisp(job_dir):
+    """D3 energy (eV) of the last ionic step from OUTCAR. D3 is a pure additive term (it does not change
+    the electron density), so E0 - Edisp is the plain-PBE energy at the same geometry."""
+    import re
+    f = os.path.join(job_dir, "OUTCAR")
+    if not os.path.exists(f): return None
+    v = re.findall(r"Edisp \(eV\):\s*([-+.\dE]+)", open(f, errors="ignore").read())
+    return float(v[-1]) if v else None
+
 def last_energy(job_dir):
     """Final E0 from OSZICAR, or None if the job has not produced one."""
     import re

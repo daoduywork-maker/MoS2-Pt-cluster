@@ -1,4 +1,4 @@
-SYSTEM  = Pt1 on pristine, Mo-top a=3.1800
+SYSTEM  = Pt1 on pristine, Mo-top a=3.1514
 ENCUT   = 450
 PREC    = Accurate
 EDIFF   = 1E-5

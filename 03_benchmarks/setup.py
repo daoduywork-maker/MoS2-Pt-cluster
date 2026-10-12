@@ -26,7 +26,7 @@ def build(a, encut):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--a", type=float, default=3.18, help="MoS2 lattice constant from step 02 (A); 3.18 is provisional")
+    ap.add_argument("--a", type=float, default=3.1514, help="MoS2 lattice constant from step 02 (A)")
     ap.add_argument("--encut", type=int, default=450, help="plane-wave cutoff chosen in step 01 (eV)")
     args = ap.parse_args()
     print("wrote %d job folders in 03_benchmarks" % len(build(args.a, args.encut)))

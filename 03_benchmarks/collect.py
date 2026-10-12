@@ -38,3 +38,19 @@ for site, ref in (("Mo-top", "Li 2017: 3.71 | Saidi 2015: 2.83"), ("S-top", "Li 
                   ("hollow", "Li 2017: 3.17 | Saidi 2015: 2.25")):
     show("Pt1 binding, pristine " + site, diff((1, "P"), (1, "Pt"), (-1, "Pt1_P_" + site)), ref)
 show("Pt1 binding in S vacancy", diff((1, "V1"), (1, "Pt"), (-1, "Pt1_V1")), "Li 2017: 6.08  (pass if within ~0.2)")
+
+# ---- D3 versus plain PBE (same geometries): E_PBE = E0 - Edisp
+print("\nPt1 binding with bulk-Pt reference, with and without the D3 term (positive = bound)")
+D = {k: st.last_edisp(p) for k, p in PATHS.items()}
+bulk = "bulk_static" if E["bulk_static"] is not None else "bulk"
+def both(sub, ads):
+    if any(E[k] is None for k in (sub, bulk, ads)): return None, None
+    full = E[sub] + E[bulk] - E[ads]
+    if any(D[k] is None for k in (sub, bulk, ads)): return full, None
+    return full, full - (D[sub] + D[bulk] - D[ads])
+for site in ("Pt1_P_Mo-top", "Pt1_P_S-top", "Pt1_P_hollow", "Pt1_V1"):
+    f, n = both("V1" if site == "Pt1_V1" else "P", site)
+    print("  %-14s PBE+D3 %8s   plain PBE %8s" % (site, "%.3f" % f if f is not None else "n/a", "%.3f" % n if n is not None else "n/a"))
+if E["Pt"] is not None and E[bulk] is not None and D[bulk] is not None:
+    print("  Pt cohesive energy: PBE+D3 %.2f eV, plain PBE (D3 lattice) %.2f eV, experiment 5.84 eV" %
+          (E["Pt"] - E[bulk], E["Pt"] - (E[bulk] - D[bulk])))
