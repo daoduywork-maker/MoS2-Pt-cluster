@@ -6,7 +6,7 @@ Throughout this file, **G1–G3** label the three gaps declared under [The gap](
 
 ## Status
 
-Last updated 2026-10-13. Steps 01–03 done, including the k-point and cutoff check on the 6×6 cell. Step 04 next.
+Last updated 2026-10-13. Steps 01–03 done, including the k-point and cutoff check on the 6×6 cell. Step 04 (vacancy pairs) built, ready to submit.
 
 | Step | Folder | State |
 |---|---|---|
@@ -14,7 +14,7 @@ Last updated 2026-10-13. Steps 01–03 done, including the k-point and cutoff ch
 | 01 Convergence | `01_convergence/` | **Done** (2026-10-12): 450 eV; Γ adequate for the 6×6 sheet |
 | 02 Lattice constant and references | `02_references/` | **Done** (2026-10-12): a(MoS₂) = 3.1514 Å; a(Pt) = 3.926 Å |
 | 03 Benchmarks | `03_benchmarks/` | **Done** (2026-10-13): Pt₁ in vacancy 5.89 eV (Li 2017: 6.08); site ranking on pristine matches; Γ/450 eV confirmed on the 6×6 cell (≤ 1.6 meV) |
-| 04 Vacancy pairs | `04_vacancy_pairs/` | Planned |
+| 04 Vacancy pairs | `04_vacancy_pairs/` | **Built** (2026-10-13): 7 relaxations, ready to submit |
 | 05 Ptₙ, n = 1–4 | `05_Ptn_small/` | Planned |
 | 06 Ptₙ, n = 6, 9, 13 | `06_Ptn_large/` | Planned |
 | 07 Control | `07_control/` | Planned |
@@ -187,7 +187,7 @@ The scope is exactly what G1–G3 require.
 | 01 | Cutoff and k-mesh convergence on small cells | 34 single points | All | Settings converged |
 | 02 | MoS₂ lattice constant; bulk Pt, Pt atom, S atom | 10 jobs | All | Lattice constant fitted |
 | 03 | 6×6 benchmarks: P, V1, Pt₁ on three pristine sites, Pt₁ in V1 | 6 relaxations | All | Pt in V1 within ~0.2 eV of Li 2017 |
-| 04 | Vacancy pair energies at 1st, 2nd, 3rd neighbour (fixed and relaxed cell) | ~8 jobs | G1 | Random-vacancy model confirmed or revised |
+| 04 | Vacancy pair and triplet energies (1st, 2nd, 3rd, far, vertical pair; row and triangle of 3), fixed cell | 7 relaxations | G1 | Random-vacancy model confirmed or revised |
 | 05 | Ptₙ, n = 1–4, on every substrate, by enumerating sites; addition-energy analysis | ~150 relaxations | G1 (H1, H2) | Lowest structure per (n, substrate) found |
 | 06 | n = 6, 9, 13 on P, V1 and one patch, from Shi 2018 structures plus short AIMD annealing | ~50 relaxations | G1 (H3), G3 | Lowest structures found |
 | 07 | Control: same cluster (n = 1, 4, 6, 13) free, on P, on V1; Bader charges | ~12 jobs | G2 (H4) | Figure F3 |
@@ -259,7 +259,27 @@ Li 2017 used PBE-D2 and Saidi 2015 plain PBE, so our PBE-D3 values should fall n
 - **Confirmation on the real cell:** single points of relaxed `V1` and `Pt1_V1` at the next cutoff up and at 2×2×1 and 3×3×1. The binding energy should change by less than 20 meV.
 - The pristine sheet should come out non-magnetic.
 
-### Steps 04–08
+### Step 04 — Vacancy pairs
+
+| | Question | Gap | Hypothesis |
+|---|---|---|---|
+| **Step 04** | Do S vacancies attract, repel or ignore each other in our setup? The literature splits (Sensoy 2017: repel; Komsa 2013, Le 2014: weakly attract), all within 0.2 eV. | G1 (input to H2) | **H0.** The interaction is weak (≤ 0.2 eV per vacancy), so vacancies sit at random, which gives 47–74% of vacancies a vacant neighbour at 10–20% density. |
+
+| Subfolder | Removed S (top layer unless stated) | Separation from the central vacancy |
+|---|---|---|
+| `V2_1nn`, `V2_2nn`, `V2_3nn` | 2 | 3.15, 5.46, 6.30 Å |
+| `V2_far` | 2 | 10.92 Å (largest in the 6×6 cell; checks the isolated limit) |
+| `V2_vert` | Top and bottom S at the same site | — (Li 2017: Pt binds 5.74 eV here) |
+| `V3_row` | 3 in a line | 3.15, 6.30 Å |
+| `V3_tri` | The 3 top S bonded to one Mo | 3.15 Å each |
+
+**Quantity.** E_int = E(V2) + E(P) − 2 E(V1) for pairs and E(V3) + 2 E(P) − 3 E(V1) for triplets; negative means attraction. `run_all.pbs` prints it at the end, with and without D3, using `P` and `V1` from step 03.
+
+**Choices.** Fixed cell at a = 3.1514 Å: VASP 5.4.4 cannot relax the cell in-plane only, and 2–3 vacancies among 72 S change the lattice little. The row and triangle are also step-05 substrates. No separate test job: the settings are those of `03_benchmarks/V1`, which ran cleanly.
+
+**Cost.** Empty vacancies need 60–76 SCF steps from scratch; expect 6–8 h per relaxation, ~20–28 h for all 7 on 2 nodes; ≤ 0.6 GB per rank.
+
+### Steps 05–08
 
 Designed in outline in the overview table. Each gets its steps table, validation targets and checks here when its inputs are built.
 
@@ -403,7 +423,15 @@ From the literature alone (inference from combining papers with different setups
 | `kcheck.pbs` | Single points of relaxed `V1` and `Pt1_V1` at Γ/450 eV, Γ/550 eV, 2×2×1 and 3×3×1 in `kcheck/`; prints the change in Pt binding (bash and awk only). |
 | `P/`, `V1/`, `Pt1_P_Mo-top/`, `Pt1_P_S-top/`, `Pt1_P_hollow/`, `Pt1_V1/` | Job folders. |
 
-**`04_vacancy_pairs/` to `08_hydrogen/`** — empty placeholders (`.gitkeep`) for the planned steps.
+**`04_vacancy_pairs/`**
+
+| File | Purpose |
+|---|---|
+| `setup.py` | Builds the 7 vacancy pair and triplet jobs. Options: `--a`, `--encut`. |
+| `run_all.pbs` | Relaxes them on 2 nodes, one job per node; restarts from `CONTCAR` after a walltime cut; prints interaction energies at the end (bash and awk only). |
+| `V2_1nn/` … `V3_tri/` | Job folders. |
+
+**`05_Ptn_small/` to `08_hydrogen/`** — empty placeholders (`.gitkeep`) for the planned steps.
 
 **Inside every job folder**
 
@@ -452,7 +480,7 @@ Tracked on purpose: `INCAR`, `KPOINTS`, `POSCAR`, `vasp_bin`, `CONTCAR`, `OSZICA
 
 1. ~~Steps 01–03~~ (done 2026-10-13, including the Γ/cutoff check).
 2. Decide on plain-PBE re-relaxation for the Pt₁-versus-bulk sign (+0.4 eV), if it matters for G1.
-3. Design step 04 (vacancy pairs): which neighbour shells to include.
+3. Run step 04: `qsub run_all.pbs` in `04_vacancy_pairs` (~1 day on 2 nodes).
 5. Cited-by check on Li 2017 and Shi 2018 (confirms N1).
 6. Read the Yan 2025 supporting information (it may contain part of the G2 control).
 7. Decide the largest cluster size (Pt₁₃ or Pt₆), then design step 04 and step 05 inputs.

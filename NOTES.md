@@ -56,6 +56,11 @@ Source for modules, launch line and queues: the lab's Wuzhou job templates (`pbs
     # energies of every finished job, no Python needed
     for d in */; do echo "$d | $(tail -1 $d/OSZICAR) | $(grep 'Edisp' $d/OUTCAR | tail -1)"; done
 
+    # step 04 on the cluster (needs 03_benchmarks/P and V1 finished)
+    cd 04_vacancy_pairs
+    qsub run_all.pbs                            # 7 relaxations on 2 nodes, ~1 day
+    cat run_all.log                             # status per job, then interaction energies (negative = attract)
+
     # plain-PBE energy of any finished job: E0 - Edisp
     grep -i edisp OUTCAR | tail -1
 
@@ -110,6 +115,8 @@ Source for modules, launch line and queues: the lab's Wuzhou job templates (`pbs
 | 2026-10-12 | Step 03: test `Pt1_V1` with an early report after the first ionic step; then the rest on 2 nodes | First 108-atom relaxation; memory and timing unmeasured |
 | 2026-10-12 | Fixed `Edisp` parsing (VASP 5.4.4 prints `Edisp (eV)` without a colon) | Found when reading the step-02 output |
 | 2026-10-13 | Step 03 passes (Pt₁ in vacancy 5.89 eV vs Li 2017 6.08; pristine site ranking matches); no plain-PBE re-relaxation yet | No ranking changes between D3 and plain PBE |
+| 2026-10-13 | Step 04: 7 jobs (V2 at 1st/2nd/3rd/far, vertical V2, V3 row, V3 triangle around one Mo), fixed cell | User chose the recommended set; VASP 5.4.4 cannot relax in-plane only; row and triangle are step-05 substrates |
+| 2026-10-13 | Step 04 without a separate test job | Same settings as 03 `V1`, which ran cleanly; memory known (≤ 0.6 GB per rank) |
 | 2026-10-13 | Γ and 450 eV kept for all 6×6 work | `kcheck`: binding changes ≤ 1.6 meV at 550 eV, 2×2×1, 3×3×1 |
 | 2026-10-13 | `kcheck.pbs` without KPAR | Keeps memory per rank low for the `vasp_std` single points (estimate ~1 GB per rank, < 50 GB per node) |
 | 2026-10-12 | Always test one job before a batch | The first batch wasted 5.6 node-hours on settings never tried on one job |
