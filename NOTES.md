@@ -50,6 +50,11 @@ Source for modules, launch line and queues: the lab's Wuzhou job templates (`pbs
     qsub test_one.pbs                           # Pt1_V1 alone; early report after the first ionic step
     cat test_one.log                            # memory, time per SCF step
     qsub run_all.pbs                            # the other 5 on 2 nodes; skips Pt1_V1 while the test runs
+    qsub kcheck.pbs                             # k-point/cutoff check: 8 single points in kcheck/, 2 nodes
+    cat kcheck.log                              # binding change in meV; target < 20
+
+    # energies of every finished job, no Python needed
+    for d in */; do echo "$d | $(tail -1 $d/OSZICAR) | $(grep 'Edisp' $d/OUTCAR | tail -1)"; done
 
     # plain-PBE energy of any finished job: E0 - Edisp
     grep -i edisp OUTCAR | tail -1
@@ -73,7 +78,8 @@ Source for modules, launch line and queues: the lab's Wuzhou job templates (`pbs
 | 2026-10-12 | 01 `run_all.pbs` | 217587 | 4 requested; log shows node12, node9 | **Done**: all 33 converged (10–89 steps); 1 h 52 min; ≤ 0.6 GB. Only 2 distinct hosts appeared in `$PBS_NODEFILE`; not yet investigated. |
 | 2026-10-12 | 02 `test_one.pbs` (Pt atom) | not recorded | 1 × std40 | Passed: 18 CG steps, E0 = −0.568 eV, mag 2.00, 70 s. |
 | 2026-10-12 | 02 `run_all.pbs` | 217589 | 1 × std40 | **Done**: all converged; 3 min. a(MoS₂) = 3.1514 Å, a(Pt) = 3.926 Å, E_coh(Pt) = 6.29 eV. |
-| 2026-10-12 | 03 `test_one.pbs` (`Pt1_V1`, 6×6, 108 atoms) | `p2_test3`, ID not recorded | 1 × std40 | Submitted ~21:40. Waiting for the early report (memory, time per SCF step). `run_all.pbs` (2 nodes) to follow if memory is fine. |
+| 2026-10-12 | 03 `test_one.pbs` (`Pt1_V1`, 6×6, 108 atoms) | `p2_test3`, ID not recorded | 1 × std40 | **Done**: first ionic step 1621 s (21 SCF, 45–72 s each); 12 ionic steps, 7842 s; 0.56 GB on rank 0; E0 = −819.765 eV, mag 0. |
+| 2026-10-13 | 03 `run_all.pbs` (other 5) | 217591 | 2 × std40 (node12, node9) | **Done** 00:49–12:42: all `ok`. P 1 ionic step (2978 s); hollow 16 (9625 s); Mo-top 32 (19795 s); S-top 12 (13483 s); V1 29 (20023 s); 0.6 GB per rank. |
 
 ## Decisions
 
@@ -102,6 +108,8 @@ Source for modules, launch line and queues: the lab's Wuzhou job templates (`pbs
 | 2026-10-12 | Report every binding energy with and without D3 (E_PBE = E0 − Edisp at the same geometry); re-relax key structures with plain PBE if a conclusion changes | D3 overbinds Pt cohesion by 0.45 eV, which favours clusters and could bias G1 |
 | 2026-10-12 | Step 03: test `Pt1_V1` with an early report after the first ionic step; then the rest on 2 nodes | First 108-atom relaxation; memory and timing unmeasured |
 | 2026-10-12 | Fixed `Edisp` parsing (VASP 5.4.4 prints `Edisp (eV)` without a colon) | Found when reading the step-02 output |
+| 2026-10-13 | Step 03 passes (Pt₁ in vacancy 5.89 eV vs Li 2017 6.08; pristine site ranking matches); no plain-PBE re-relaxation yet | No ranking changes between D3 and plain PBE |
+| 2026-10-13 | `kcheck.pbs` without KPAR | Keeps memory per rank low for the `vasp_std` single points (estimate ~1 GB per rank, < 50 GB per node) |
 | 2026-10-12 | Always test one job before a batch | The first batch wasted 5.6 node-hours on settings never tried on one job |
 | 2026-10-09 | NEB kinetics deferred | Not needed to answer G1 |
 | 2026-10-09 | Nanoparticles (~1.9 nm) out of scope; stand-in deferred | Too large for a structure search in this cell |
@@ -118,16 +126,21 @@ Source for modules, launch line and queues: the lab's Wuzhou job templates (`pbs
 | MoS₂ lattice constant | 3.1514 Å | Step 02 fit (experiment 3.160 Å) |
 | Pt lattice constant | 3.926 Å | Step 02 (experiment 3.924 Å) |
 | Pt cohesive energy | 6.29 eV (PBE+D3); 5.52 eV plain PBE at the same lattice | Step 02; Edisp(bulk) = −0.777 eV/atom; experiment 5.84 eV |
+| Pt₁ binding in S vacancy | 5.89 eV (PBE+D3); 5.16 eV plain PBE | Step 03 (Li 2017: 6.08) |
+| Pt₁ binding, pristine Mo-top / S-top / hollow | 3.36 / 2.83 / 2.74 eV (D3); 2.79 / 2.36 / 2.20 eV (PBE) | Step 03 |
+| S-vacancy formation, S-atom reference | 6.12 eV (D3); 5.54 eV (PBE) | Step 03 |
+| Memory, 6×6 relaxation (Γ) | ≤ 0.6 GB per rank, ~24 GB per node | Step 03 |
+| Time, 6×6 relaxation (Γ, 1 node) | 0.8 h (pristine, 1 step) to 5.6 h (32 steps); ~10 min per ionic step | Step 03 |
 
 ## Provisional values (replace when measured)
 
 | Quantity | Provisional | Source of final value |
 |---|---|---|
-| Memory, 6×6 relaxation | a few GB (estimate; 3×3 slabs used ≤ 0.6 GB) | `OUTCAR` of `03_benchmarks/Pt1_V1` |
 | Compute, whole project | 1,000–1,500 node-hours (guess) | Step 03 timings |
 
 ## Open questions
 
+- Pt₁ in a vacancy is +0.4 eV relative to bulk Pt (both functionals). Robust, or inside the setup spread? Li 2017's 6.08 eV would flip the sign.
 - Largest cluster size: Pt₁₃ or Pt₆?
 - Cited-by check on Li 2017 and Shi 2018: has anyone computed Ptₙ at S vacancies?
 - Yan 2025 supporting information: does it contain a charge analysis or extra H sites?

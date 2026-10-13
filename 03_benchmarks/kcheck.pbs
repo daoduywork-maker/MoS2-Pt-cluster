@@ -1,0 +1,80 @@
+#!/bin/bash
+# Step 03 check: is Gamma-only at 450 eV good enough for binding energies on the 6x6 cell?
+# Single points (no relaxation) of the relaxed V1 and Pt1_V1 (their CONTCARs) at:
+#   g450 = Gamma, 450 eV (baseline)   e550 = Gamma, 550 eV   k2 = 2x2x1, 450 eV   k3 = 3x3x1, 450 eV
+# Prints the Pt binding change against the baseline (target: < 20 meV). Bash and awk only.
+# Submit from inside 03_benchmarks:   qsub kcheck.pbs      then:  cat kcheck.log
+#PBS -N p2_kcheck
+#PBS -q std40
+#PBS -l nodes=2:ppn=40
+#PBS -V
+#PBS -l walltime=24:00:00
+#PBS -j oe
+
+module load intel/intel2020
+module load vasp/vasp544elpa
+
+cd "$PBS_O_WORKDIR"
+LOG="$PBS_O_WORKDIR/kcheck.log"
+for s in V1 Pt1_V1; do
+  [ -s $s/CONTCAR ] && [ -s $s/POTCAR ] || { echo "STOP: $s/CONTCAR or POTCAR missing" | tee -a "$LOG"; exit 1; }
+done
+
+# ---- build the 8 job folders (skipped if they exist already)
+for s in V1 Pt1_V1; do
+  for t in g450 e550 k2 k3; do
+    d=kcheck/${s}_$t
+    [ -d $d ] && continue
+    mkdir -p $d
+    cp $s/CONTCAR $d/POSCAR; cp $s/POTCAR $d/
+    sed -e 's/^ *IBRION.*/IBRION  = -1/' -e 's/^ *NSW.*/NSW     = 0/' $s/INCAR > $d/INCAR
+    [ $t = e550 ] && sed -i 's/^ *ENCUT.*/ENCUT   = 550/' $d/INCAR    # no KPAR: keeps memory per rank low
+    n=1; [ $t = k2 ] && n=2; [ $t = k3 ] && n=3
+    printf "${n}x${n}x1\n0\nGamma\n$n $n 1\n0 0 0\n" > $d/KPOINTS
+    [ $n = 1 ] && echo vasp_gam > $d/vasp_bin || echo vasp_std > $d/vasp_bin
+  done
+done
+
+JOBS=$(ls -d kcheck/*/ | sed 's|/$||' | sort)
+find kcheck -name .claimed -type d -exec rmdir {} + 2>/dev/null
+echo "=== $(date '+%F %T')  job $PBS_JOBID on: $(sort -u $PBS_NODEFILE | tr '\n' ' ')" >> "$LOG"
+
+worker() {
+  local host=$1
+  for d in $JOBS; do
+    grep -q "General timing" "$d/OUTCAR" 2>/dev/null && continue
+    mkdir "$d/.claimed" 2>/dev/null || continue
+    (
+      cd "$d" || exit 1
+      bin=$(cat vasp_bin); command -v "$bin" > /dev/null || bin=vasp_std
+      t0=$SECONDS
+      mpirun -np 40 -hosts $host -genv I_MPI_FABRICS=shm:ofi "$bin" > vasp.out 2>&1
+      nelm=$(grep -E "^ *NELM *=" INCAR | awk -F= '{print $2+0}')
+      steps=$(awk '/^[A-Z]+ *: *[0-9]+/{n++} END{print n+0}' OSZICAR 2>/dev/null)
+      if ! grep -q "General timing" OUTCAR 2>/dev/null; then st=FAILED
+      elif [ "$steps" -ge "$nelm" ]; then st="UNCONVERGED($steps/$nelm)"
+      else st="ok($steps SCF)"; fi
+      mem=$(grep -i "maximum memory used" OUTCAR 2>/dev/null | awk '{printf "%.1f GB", $5/1048576}')
+      echo "$d  $host  $bin  $((SECONDS - t0)) s  mem=${mem:-n/a}  $st" >> "$LOG"
+    )
+    rmdir "$d/.claimed"
+  done
+}
+for h in $(sort -u $PBS_NODEFILE); do worker "$h" & done
+wait
+
+# ---- report: Pt binding change against g450, with and without D3
+e0()  { awk '/F=/{for(i=1;i<=NF;i++) if($i=="E0=") e=$(i+1)} END{print e}' kcheck/$1/OSZICAR 2>/dev/null; }
+ed()  { grep "Edisp" kcheck/$1/OUTCAR 2>/dev/null | tail -1 | awk '{print $NF}'; }
+{
+  echo "--- binding change vs Gamma/450 eV (meV; target |change| < 20)"
+  b0=$(awk -v a=$(e0 Pt1_V1_g450) -v b=$(e0 V1_g450) 'BEGIN{print a-b}')
+  p0=$(awk -v a=$(e0 Pt1_V1_g450) -v b=$(e0 V1_g450) -v c=$(ed Pt1_V1_g450) -v d=$(ed V1_g450) 'BEGIN{print (a-c)-(b-d)}')
+  for t in e550 k2 k3; do
+    a=$(e0 Pt1_V1_$t); b=$(e0 V1_$t)
+    [ -n "$a" ] && [ -n "$b" ] || { echo "  $t  missing"; continue; }
+    awk -v t=$t -v a=$a -v b=$b -v c=$(ed Pt1_V1_$t) -v d=$(ed V1_$t) -v b0=$b0 -v p0=$p0 \
+      'BEGIN{printf "  %-5s PBE+D3 %+7.1f   plain PBE %+7.1f\n", t, -1000*((a-b)-b0), -1000*(((a-c)-(b-d))-p0)}'
+  done
+  echo "=== $(date '+%F %T')  done"
+} >> "$LOG"

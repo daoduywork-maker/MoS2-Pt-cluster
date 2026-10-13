@@ -6,14 +6,14 @@ Throughout this file, **G1–G3** label the three gaps declared under [The gap](
 
 ## Status
 
-Last updated 2026-10-12. Steps 01–02 done; step 03 test (`Pt1_V1`) running.
+Last updated 2026-10-13. Steps 01–03 done; k-point and cutoff check on the 6×6 cell (`kcheck.pbs`) to run.
 
 | Step | Folder | State |
 |---|---|---|
 | Literature review and scope | `Literatures/` | Done (12 papers; 4 only skimmed; no SI read) |
 | 01 Convergence | `01_convergence/` | **Done** (2026-10-12): 450 eV; Γ adequate for the 6×6 sheet |
 | 02 Lattice constant and references | `02_references/` | **Done** (2026-10-12): a(MoS₂) = 3.1514 Å; a(Pt) = 3.926 Å |
-| 03 Benchmarks | `03_benchmarks/` | **Running**: `Pt1_V1` test submitted 2026-10-12 (job `p2_test3`, 1 node); the other 5 wait for its early report |
+| 03 Benchmarks | `03_benchmarks/` | **Done** (2026-10-13): Pt₁ in vacancy 5.89 eV (Li 2017: 6.08); site ranking on pristine matches. Γ/cutoff check on the 6×6 cell pending |
 | 04 Vacancy pairs | `04_vacancy_pairs/` | Planned |
 | 05 Ptₙ, n = 1–4 | `05_Ptn_small/` | Planned |
 | 06 Ptₙ, n = 6, 9, 13 | `06_Ptn_large/` | Planned |
@@ -156,7 +156,7 @@ The scope is exactly what G1–G3 require.
 | Cutoff / k-points | 450 eV; Γ for 6×6 relaxations; MoS₂ primitive 15×15×1; bulk Pt 21×21×21 | Fixed by step 01; Γ confirmed again on the 6×6 cell in step 03 |
 | Convergence | Forces < 0.02 eV/Å; dipole correction | Pt on one side only |
 | Electronic | `ALGO = Normal`; `AMIX = 0.2`, `BMIX = 0.0001` (+ magnetic counterparts); `MAGMOM` Mo 0.5, S 0, Pt 1 μB; `NELM = 200` | `ALGO = Fast` diverged in the slabs; isolated atoms use `ALGO = All` |
-| Lattice | Fixed at the fitted pristine constant | 3.18 Å provisional until step 02 |
+| Lattice | Fixed at the fitted pristine constant | 3.1514 Å (step 02) |
 | Pt reference | Isolated atom and bulk Pt | Bulk decides "will it sinter" |
 
 **Substrates** (vacancies in the top S layer only)
@@ -304,7 +304,25 @@ All 10 jobs converged; the bulk relaxation reached the required accuracy.
 
 PBE+D3 overbinds Pt–Pt by 0.45 eV and plain PBE underbinds it by 0.32 eV; D3 adds 0.78 eV per Pt atom. Experiment lies between the two. Because this favours clusters over single atoms, step 03 onward reports binding energies with and without the D3 term (see Methods, step 03).
 
+### Step 03 — Benchmarks (2026-10-13)
 
+All six 6×6 relaxations reached the required accuracy (12–32 ionic steps, 2.2–5.6 h each on 1 node, ≤ 0.6 GB per rank). All are non-magnetic. Binding energies are relative to the free Pt atom; positive means bound.
+
+| Quantity (eV) | PBE+D3 | Plain PBE | Literature |
+|---|---|---|---|
+| Pt₁ in S vacancy | **5.89** | 5.16 | 6.08 (Li 2017, PBE-D2); 5.83 (Ramírez 2022) |
+| Pt₁ on pristine, Mo-top | 3.36 | 2.79 | 3.71 (Li 2017); 2.83 (Saidi 2015, PBE); 2.89 (Özaydın 2014) |
+| Pt₁ on pristine, S-top | 2.83 | 2.36 | 3.22 (Li 2017); 2.20 (Saidi 2015) |
+| Pt₁ on pristine, hollow | 2.74 | 2.20 | 3.17 (Li 2017); 2.25 (Saidi 2015) |
+| Anchoring gain, vacancy over Mo-top | 2.52 | 2.38 | 2.37 (Li 2017) |
+| S-vacancy formation (S-atom reference) | 6.12 | 5.54 | 6.87 (Li 2017); 5.85 (Le 2014) |
+| Pt₁ in vacancy relative to bulk Pt | +0.40 | +0.36 | — |
+
+- **Pass.** Pt₁ in the vacancy is 0.19 eV below Li 2017, inside the 0.2 eV target. The pristine site ranking (Mo-top > S-top > hollow) matches Li 2017, and plain PBE matches Saidi 2015 to within 0.16 eV.
+- **D3** adds 0.57 eV (pristine Mo-top) to 0.73 eV (vacancy) to the binding but changes no ranking.
+- **Symmetry caveat.** Pt kept its starting in-plane position on all three pristine sites, because the in-plane forces cancel by symmetry. S-top and hollow are therefore stationary points, not proven minima.
+- **Relative to bulk Pt**, one Pt atom in a vacancy is 0.4 eV less stable, with or without D3. Thermodynamically, the vacancy alone does not stabilise single atoms against aggregation. The margin is small compared with the spread between setups (Li 2017's 6.08 eV would flip the sign), so this is provisional. The relevant comparison for G1 is a cluster at a vacancy against the same cluster on the pristine sheet (steps 04–05).
+- The unrelaxed 3×3 test of step 01 (−0.23 eV relative to bulk Pt) used a different cell, lattice constant and no relaxation, so it is not comparable.
 
 From the literature alone (inference from combining papers with different setups; see section 6 of the literature review):
 
@@ -380,6 +398,7 @@ From the literature alone (inference from combining papers with different setups
 | `collect.py` | Gathers energies (with the references from step 02) and prints the benchmarks next to literature values, with and without the D3 term. |
 | `test_one.pbs` | Relaxes `Pt1_V1` alone on 1 node; early report of memory and time after the first ionic step. |
 | `run_all.pbs` | Relaxes the rest on 2 nodes, one job per node; restarts a relaxation cut off by the walltime from its `CONTCAR`. |
+| `kcheck.pbs` | Single points of relaxed `V1` and `Pt1_V1` at Γ/450 eV, Γ/550 eV, 2×2×1 and 3×3×1 in `kcheck/`; prints the change in Pt binding (bash and awk only). |
 | `P/`, `V1/`, `Pt1_P_Mo-top/`, `Pt1_P_S-top/`, `Pt1_P_hollow/`, `Pt1_V1/` | Job folders. |
 
 **`04_vacancy_pairs/` to `08_hydrogen/`** — empty placeholders (`.gitkeep`) for the planned steps.
@@ -412,7 +431,7 @@ To run a single job on the cluster (steps 02 onward):
     bash <repo>/make_potcar.sh        # needs VASP_PP_PATH set to the PBE POTCAR directory
     qsub <repo>/run_vasp.pbs
 
-The job folders now in the repository were built with the provisional defaults (a = 3.18 Å, 450 eV). Their geometries were checked for atom counts and bond lengths; none has been run through VASP.
+Step 03 job folders use a = 3.1514 Å and 450 eV; their `CONTCAR` and `OSZICAR` from the cluster are not yet copied into this repository.
 
 ## Not tracked
 
@@ -429,10 +448,10 @@ Tracked on purpose: `INCAR`, `KPOINTS`, `POSCAR`, `vasp_bin`, `CONTCAR`, `OSZICA
 
 ## Next steps
 
-1. On the cluster: find the VASP module name and the PBE POTCAR directory; update `run_vasp.pbs` and `NOTES.md`.
-2. Run step 01 and fix the cutoff and k-mesh.
-3. Run step 02, fit the lattice constant, rebuild step 03.
-4. Run `03_benchmarks/Pt1_V1` as the memory and timing test, then the remaining benchmarks.
+1. ~~Steps 01–03~~ (done 2026-10-13).
+2. Run `03_benchmarks/kcheck.pbs`: binding should change by < 20 meV at 550 eV, 2×2×1 and 3×3×1.
+3. Decide on plain-PBE re-relaxation for the Pt₁-versus-bulk sign (+0.4 eV), if it matters for G1.
+4. Design step 04 (vacancy pairs).
 5. Cited-by check on Li 2017 and Shi 2018 (confirms N1).
 6. Read the Yan 2025 supporting information (it may contain part of the G2 control).
 7. Decide the largest cluster size (Pt₁₃ or Pt₆), then design step 04 and step 05 inputs.
