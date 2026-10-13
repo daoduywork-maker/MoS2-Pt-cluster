@@ -6,14 +6,14 @@ Throughout this file, **G1–G3** label the three gaps declared under [The gap](
 
 ## Status
 
-Last updated 2026-10-13. Steps 01–03 done; k-point and cutoff check on the 6×6 cell (`kcheck.pbs`) to run.
+Last updated 2026-10-13. Steps 01–03 done, including the k-point and cutoff check on the 6×6 cell. Step 04 next.
 
 | Step | Folder | State |
 |---|---|---|
 | Literature review and scope | `Literatures/` | Done (12 papers; 4 only skimmed; no SI read) |
 | 01 Convergence | `01_convergence/` | **Done** (2026-10-12): 450 eV; Γ adequate for the 6×6 sheet |
 | 02 Lattice constant and references | `02_references/` | **Done** (2026-10-12): a(MoS₂) = 3.1514 Å; a(Pt) = 3.926 Å |
-| 03 Benchmarks | `03_benchmarks/` | **Done** (2026-10-13): Pt₁ in vacancy 5.89 eV (Li 2017: 6.08); site ranking on pristine matches. Γ/cutoff check on the 6×6 cell pending |
+| 03 Benchmarks | `03_benchmarks/` | **Done** (2026-10-13): Pt₁ in vacancy 5.89 eV (Li 2017: 6.08); site ranking on pristine matches; Γ/450 eV confirmed on the 6×6 cell (≤ 1.6 meV) |
 | 04 Vacancy pairs | `04_vacancy_pairs/` | Planned |
 | 05 Ptₙ, n = 1–4 | `05_Ptn_small/` | Planned |
 | 06 Ptₙ, n = 6, 9, 13 | `06_Ptn_large/` | Planned |
@@ -153,7 +153,7 @@ The scope is exactly what G1–G3 require.
 | Cell | 6×6 MoS₂ monolayer (108 atoms), 24 Å cell height | Keeps Pt₁₃ > 10 Å from its image |
 | Functional | PBE + D3 (Becke–Johnson damping), spin-polarised | Matches Yan 2025, which says only "DFT-D3" |
 | POTCARs | `Mo_pv`, `S`, `Pt` | `Mo_sv` is the alternative |
-| Cutoff / k-points | 450 eV; Γ for 6×6 relaxations; MoS₂ primitive 15×15×1; bulk Pt 21×21×21 | Fixed by step 01; Γ confirmed again on the 6×6 cell in step 03 |
+| Cutoff / k-points | 450 eV; Γ for 6×6 relaxations; MoS₂ primitive 15×15×1; bulk Pt 21×21×21 | Fixed by step 01; confirmed on the 6×6 cell in step 03 (binding within 1.6 meV at 550 eV, 2×2×1, 3×3×1) |
 | Convergence | Forces < 0.02 eV/Å; dipole correction | Pt on one side only |
 | Electronic | `ALGO = Normal`; `AMIX = 0.2`, `BMIX = 0.0001` (+ magnetic counterparts); `MAGMOM` Mo 0.5, S 0, Pt 1 μB; `NELM = 200` | `ALGO = Fast` diverged in the slabs; isolated atoms use `ALGO = All` |
 | Lattice | Fixed at the fitted pristine constant | 3.1514 Å (step 02) |
@@ -322,6 +322,8 @@ All six 6×6 relaxations reached the required accuracy (12–32 ionic steps, 2.2
 - **D3** adds 0.57 eV (pristine Mo-top) to 0.73 eV (vacancy) to the binding but changes no ranking.
 - **Symmetry caveat.** Pt kept its starting in-plane position on all three pristine sites, because the in-plane forces cancel by symmetry. S-top and hollow are therefore stationary points, not proven minima.
 - **Relative to bulk Pt**, one Pt atom in a vacancy is 0.4 eV less stable, with or without D3. Thermodynamically, the vacancy alone does not stabilise single atoms against aggregation. The margin is small compared with the spread between setups (Li 2017's 6.08 eV would flip the sign), so this is provisional. The relevant comparison for G1 is a cluster at a vacancy against the same cluster on the pristine sheet (steps 04–05).
+- **Γ and 450 eV confirmed on the 6×6 cell** (`kcheck.pbs`, single points of relaxed `V1` and `Pt1_V1`). Change in Pt₁ binding against Γ/450 eV: −0.4 meV at 550 eV, +1.5 meV at 2×2×1, +1.5 meV at 3×3×1 (same with and without D3; target < 20 meV).
+- **Cost:** the empty vacancy needs 60–76 SCF steps from scratch against 21 with Pt, so structures with empty vacancies are about 3× slower per ionic step.
 - The unrelaxed 3×3 test of step 01 (−0.23 eV relative to bulk Pt) used a different cell, lattice constant and no relaxation, so it is not comparable.
 
 From the literature alone (inference from combining papers with different setups; see section 6 of the literature review):
@@ -448,10 +450,9 @@ Tracked on purpose: `INCAR`, `KPOINTS`, `POSCAR`, `vasp_bin`, `CONTCAR`, `OSZICA
 
 ## Next steps
 
-1. ~~Steps 01–03~~ (done 2026-10-13).
-2. Run `03_benchmarks/kcheck.pbs`: binding should change by < 20 meV at 550 eV, 2×2×1 and 3×3×1.
-3. Decide on plain-PBE re-relaxation for the Pt₁-versus-bulk sign (+0.4 eV), if it matters for G1.
-4. Design step 04 (vacancy pairs).
+1. ~~Steps 01–03~~ (done 2026-10-13, including the Γ/cutoff check).
+2. Decide on plain-PBE re-relaxation for the Pt₁-versus-bulk sign (+0.4 eV), if it matters for G1.
+3. Design step 04 (vacancy pairs): which neighbour shells to include.
 5. Cited-by check on Li 2017 and Shi 2018 (confirms N1).
 6. Read the Yan 2025 supporting information (it may contain part of the G2 control).
 7. Decide the largest cluster size (Pt₁₃ or Pt₆), then design step 04 and step 05 inputs.

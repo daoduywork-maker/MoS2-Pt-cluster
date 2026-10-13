@@ -80,6 +80,7 @@ Source for modules, launch line and queues: the lab's Wuzhou job templates (`pbs
 | 2026-10-12 | 02 `run_all.pbs` | 217589 | 1 × std40 | **Done**: all converged; 3 min. a(MoS₂) = 3.1514 Å, a(Pt) = 3.926 Å, E_coh(Pt) = 6.29 eV. |
 | 2026-10-12 | 03 `test_one.pbs` (`Pt1_V1`, 6×6, 108 atoms) | `p2_test3`, ID not recorded | 1 × std40 | **Done**: first ionic step 1621 s (21 SCF, 45–72 s each); 12 ionic steps, 7842 s; 0.56 GB on rank 0; E0 = −819.765 eV, mag 0. |
 | 2026-10-13 | 03 `run_all.pbs` (other 5) | 217591 | 2 × std40 (node12, node9) | **Done** 00:49–12:42: all `ok`. P 1 ionic step (2978 s); hollow 16 (9625 s); Mo-top 32 (19795 s); S-top 12 (13483 s); V1 29 (20023 s); 0.6 GB per rank. |
+| 2026-10-13 | 03 `kcheck.pbs` (8 single points) | 217594 | 2 × std40 (node12, node9) | **Done** 14:01–22:00: all `ok`, ≤ 0.7 GB per rank. Binding change vs Γ/450 eV: e550 −0.4, k2 +1.5, k3 +1.5 meV (plain PBE the same). Pt1_V1 jobs 21 SCF; V1 jobs 60–76 SCF. Times: Γ 26–35 min (Pt1_V1), 78–98 min (V1); k2 1.0 h / 3.7 h; k3 1.6 h / 4.6 h. |
 
 ## Decisions
 
@@ -109,6 +110,7 @@ Source for modules, launch line and queues: the lab's Wuzhou job templates (`pbs
 | 2026-10-12 | Step 03: test `Pt1_V1` with an early report after the first ionic step; then the rest on 2 nodes | First 108-atom relaxation; memory and timing unmeasured |
 | 2026-10-12 | Fixed `Edisp` parsing (VASP 5.4.4 prints `Edisp (eV)` without a colon) | Found when reading the step-02 output |
 | 2026-10-13 | Step 03 passes (Pt₁ in vacancy 5.89 eV vs Li 2017 6.08; pristine site ranking matches); no plain-PBE re-relaxation yet | No ranking changes between D3 and plain PBE |
+| 2026-10-13 | Γ and 450 eV kept for all 6×6 work | `kcheck`: binding changes ≤ 1.6 meV at 550 eV, 2×2×1, 3×3×1 |
 | 2026-10-13 | `kcheck.pbs` without KPAR | Keeps memory per rank low for the `vasp_std` single points (estimate ~1 GB per rank, < 50 GB per node) |
 | 2026-10-12 | Always test one job before a batch | The first batch wasted 5.6 node-hours on settings never tried on one job |
 | 2026-10-09 | NEB kinetics deferred | Not needed to answer G1 |
@@ -120,7 +122,7 @@ Source for modules, launch line and queues: the lab's Wuzhou job templates (`pbs
 | Quantity | Value | Source |
 |---|---|---|
 | Cutoff | 450 eV | Step 01: Pt binding varies ≤ 1 meV over 350–600 eV; totals ≤ 0.5 meV/atom at 450 eV |
-| k-mesh, 6×6 relaxations | Γ | Step 01: 0.42 meV/atom on the pristine sheet; reconfirmed on the 6×6 cell in step 03 |
+| k-mesh, 6×6 relaxations | Γ | Step 01: 0.42 meV/atom on the pristine sheet; step 03 `kcheck`: Pt₁ binding within 1.6 meV of 2×2×1 and 3×3×1, 0.4 meV of 550 eV |
 | k-mesh, MoS₂ primitive | 15×15×1 | Step 01: converged from k = 9 |
 | k-mesh, bulk Pt | 21×21×21 | Step 01: 1–6 meV spread between k = 15 and 21 |
 | MoS₂ lattice constant | 3.1514 Å | Step 02 fit (experiment 3.160 Å) |
@@ -131,6 +133,7 @@ Source for modules, launch line and queues: the lab's Wuzhou job templates (`pbs
 | S-vacancy formation, S-atom reference | 6.12 eV (D3); 5.54 eV (PBE) | Step 03 |
 | Memory, 6×6 relaxation (Γ) | ≤ 0.6 GB per rank, ~24 GB per node | Step 03 |
 | Time, 6×6 relaxation (Γ, 1 node) | 0.8 h (pristine, 1 step) to 5.6 h (32 steps); ~10 min per ionic step | Step 03 |
+| SCF steps from scratch, 6×6 | ~21 with Pt; 60–76 for the empty vacancy (≈ 3× slower) | Step 03 `kcheck` |
 
 ## Provisional values (replace when measured)
 
