@@ -6,7 +6,7 @@ Throughout this file, **G1–G3** label the three gaps declared under [The gap](
 
 ## Status
 
-Last updated 2026-10-13. Steps 01–03 done, including the k-point and cutoff check on the 6×6 cell. Step 04 (vacancy pairs) built, ready to submit.
+Last updated 2026-10-15. Steps 01–04 done. Step 05 (Ptₙ, n = 1–4) next.
 
 | Step | Folder | State |
 |---|---|---|
@@ -14,7 +14,7 @@ Last updated 2026-10-13. Steps 01–03 done, including the k-point and cutoff ch
 | 01 Convergence | `01_convergence/` | **Done** (2026-10-12): 450 eV; Γ adequate for the 6×6 sheet |
 | 02 Lattice constant and references | `02_references/` | **Done** (2026-10-12): a(MoS₂) = 3.1514 Å; a(Pt) = 3.926 Å |
 | 03 Benchmarks | `03_benchmarks/` | **Done** (2026-10-13): Pt₁ in vacancy 5.89 eV (Li 2017: 6.08); site ranking on pristine matches; Γ/450 eV confirmed on the 6×6 cell (≤ 1.6 meV) |
-| 04 Vacancy pairs | `04_vacancy_pairs/` | **Built** (2026-10-13): 7 relaxations, ready to submit |
+| 04 Vacancy pairs | `04_vacancy_pairs/` | **Done** (2026-10-15): pairs interact by ≤ 0.07 eV (H0 holds); row of 3 attracts (−0.16 eV), triangle repels (+0.19 eV) |
 | 05 Ptₙ, n = 1–4 | `05_Ptn_small/` | Planned |
 | 06 Ptₙ, n = 6, 9, 13 | `06_Ptn_large/` | Planned |
 | 07 Control | `07_control/` | Planned |
@@ -277,7 +277,7 @@ Li 2017 used PBE-D2 and Saidi 2015 plain PBE, so our PBE-D3 values should fall n
 
 **Choices.** Fixed cell at a = 3.1514 Å: VASP 5.4.4 cannot relax the cell in-plane only, and 2–3 vacancies among 72 S change the lattice little. The row and triangle are also step-05 substrates. No separate test job: the settings are those of `03_benchmarks/V1`, which ran cleanly.
 
-**Cost.** Empty vacancies need 60–76 SCF steps from scratch; expect 6–8 h per relaxation, ~20–28 h for all 7 on 2 nodes; ≤ 0.6 GB per rank.
+**Cost.** Empty vacancies need 60–76 SCF steps from scratch; 3.5–10.8 h per relaxation (12–39 ks), 27 h for all 7 on 2 nodes; ≤ 0.6 GB per rank.
 
 ### Steps 05–08
 
@@ -345,6 +345,26 @@ All six 6×6 relaxations reached the required accuracy (12–32 ionic steps, 2.2
 - **Γ and 450 eV confirmed on the 6×6 cell** (`kcheck.pbs`, single points of relaxed `V1` and `Pt1_V1`). Change in Pt₁ binding against Γ/450 eV: −0.4 meV at 550 eV, +1.5 meV at 2×2×1, +1.5 meV at 3×3×1 (same with and without D3; target < 20 meV).
 - **Cost:** the empty vacancy needs 60–76 SCF steps from scratch against 21 with Pt, so structures with empty vacancies are about 3× slower per ionic step.
 - The unrelaxed 3×3 test of step 01 (−0.23 eV relative to bulk Pt) used a different cell, lattice constant and no relaxation, so it is not comparable.
+
+### Step 04 — Vacancy pairs (2026-10-15)
+
+All 7 relaxations reached the required accuracy (15–38 ionic steps, 3.5–10.8 h each). E_int is as defined in Methods; negative means attraction.
+
+| System | PBE+D3 (eV) | Plain PBE (eV) | Per vacancy, D3 (eV) |
+|---|---|---|---|
+| `V2_1nn` (3.15 Å) | −0.049 | −0.032 | −0.025 |
+| `V2_2nn` (5.46 Å) | +0.007 | +0.013 | +0.003 |
+| `V2_3nn` (6.30 Å) | +0.044 | +0.051 | +0.022 |
+| `V2_far` (10.92 Å) | +0.028 | +0.034 | +0.014 |
+| `V2_vert` (same site, top and bottom) | −0.071 | −0.031 | −0.036 |
+| `V3_row` | −0.155 | −0.124 | −0.052 |
+| `V3_tri` | +0.189 | +0.247 | +0.063 |
+
+- **H0 holds for pairs.** All pair values lie within 0.07 eV, far below the 0.2 eV threshold, with and without D3. Random placement is a good model for pairs. The weak nearest-neighbour attraction (−0.025 eV per vacancy) matches Le 2014 (−0.04) and Komsa 2013, not Sensoy 2017 (repulsion).
+- **Finite-size level.** `V2_far` is +0.03 eV rather than 0, which points to interaction with periodic images in the 6×6 cell. Relative to `V2_far`, the 1nn pair is −0.08 eV (D3) or −0.07 eV (plain PBE). Differences below about 0.03 eV are noise (fixed cell, forces to 0.02 eV/Å).
+- **Triplets are not sums of pairs.** The row is −0.155 eV against −0.054 eV from its pairs (extra −0.10 eV); the triangle is +0.189 eV against −0.147 eV from its pairs (extra +0.34 eV). The triangle leaves one Mo with 3 of its 6 S neighbours. Rows are the lowest arrangement, as in Le 2014.
+- **`V2_vert`** depends on D3 (−0.071 against −0.031 eV).
+- **Consequence for step 05:** `V3_tri` is a less likely substrate than `V3_row`. It stays in because plasma does not produce an equilibrium arrangement.
 
 From the literature alone (inference from combining papers with different setups; see section 6 of the literature review):
 
@@ -480,7 +500,7 @@ Tracked on purpose: `INCAR`, `KPOINTS`, `POSCAR`, `vasp_bin`, `CONTCAR`, `OSZICA
 
 1. ~~Steps 01–03~~ (done 2026-10-13, including the Γ/cutoff check).
 2. Decide on plain-PBE re-relaxation for the Pt₁-versus-bulk sign (+0.4 eV), if it matters for G1.
-3. Run step 04: `qsub run_all.pbs` in `04_vacancy_pairs` (~1 day on 2 nodes).
+3. Design step 05 (Ptₙ, n = 1–4): substrates `P`, `V1`, `V2_1nn`, `V3_row`, `V3_tri`.
 5. Cited-by check on Li 2017 and Shi 2018 (confirms N1).
 6. Read the Yan 2025 supporting information (it may contain part of the G2 control).
 7. Decide the largest cluster size (Pt₁₃ or Pt₆), then design step 04 and step 05 inputs.

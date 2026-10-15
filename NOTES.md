@@ -86,6 +86,7 @@ Source for modules, launch line and queues: the lab's Wuzhou job templates (`pbs
 | 2026-10-12 | 03 `test_one.pbs` (`Pt1_V1`, 6×6, 108 atoms) | `p2_test3`, ID not recorded | 1 × std40 | **Done**: first ionic step 1621 s (21 SCF, 45–72 s each); 12 ionic steps, 7842 s; 0.56 GB on rank 0; E0 = −819.765 eV, mag 0. |
 | 2026-10-13 | 03 `run_all.pbs` (other 5) | 217591 | 2 × std40 (node12, node9) | **Done** 00:49–12:42: all `ok`. P 1 ionic step (2978 s); hollow 16 (9625 s); Mo-top 32 (19795 s); S-top 12 (13483 s); V1 29 (20023 s); 0.6 GB per rank. |
 | 2026-10-13 | 03 `kcheck.pbs` (8 single points) | 217594 | 2 × std40 (node12, node9) | **Done** 14:01–22:00: all `ok`, ≤ 0.7 GB per rank. Binding change vs Γ/450 eV: e550 −0.4, k2 +1.5, k3 +1.5 meV (plain PBE the same). Pt1_V1 jobs 21 SCF; V1 jobs 60–76 SCF. Times: Γ 26–35 min (Pt1_V1), 78–98 min (V1); k2 1.0 h / 3.7 h; k3 1.6 h / 4.6 h. |
+| 2026-10-13 | 04 `run_all.pbs` | 217598 | 2 × std40 (node12, node9) | **Done** 23:20 → 02:53 next day (27 h): all 7 `ok`, ≤ 0.6 GB per rank. Ionic steps / time: 1nn 36 / 26623 s; 2nn 35 / 25138 s; 3nn 37 / 26385 s; far 30 / 21004 s; vert 15 / 12752 s; row 38 / 29882 s; tri 36 / 38795 s. Interaction energies in README. |
 
 ## Decisions
 
@@ -117,6 +118,7 @@ Source for modules, launch line and queues: the lab's Wuzhou job templates (`pbs
 | 2026-10-13 | Step 03 passes (Pt₁ in vacancy 5.89 eV vs Li 2017 6.08; pristine site ranking matches); no plain-PBE re-relaxation yet | No ranking changes between D3 and plain PBE |
 | 2026-10-13 | Step 04: 7 jobs (V2 at 1st/2nd/3rd/far, vertical V2, V3 row, V3 triangle around one Mo), fixed cell | User chose the recommended set; VASP 5.4.4 cannot relax in-plane only; row and triangle are step-05 substrates |
 | 2026-10-13 | Step 04 without a separate test job | Same settings as 03 `V1`, which ran cleanly; memory known (≤ 0.6 GB per rank) |
+| 2026-10-15 | Step 04 passes: pair interactions ≤ 0.07 eV (H0 holds); triplets are not pair-additive (row −0.155, triangle +0.189 eV) | Fixed cell, D3 and plain PBE agree on sign except `V2_vert` magnitude |
 | 2026-10-13 | Γ and 450 eV kept for all 6×6 work | `kcheck`: binding changes ≤ 1.6 meV at 550 eV, 2×2×1, 3×3×1 |
 | 2026-10-13 | `kcheck.pbs` without KPAR | Keeps memory per rank low for the `vasp_std` single points (estimate ~1 GB per rank, < 50 GB per node) |
 | 2026-10-12 | Always test one job before a batch | The first batch wasted 5.6 node-hours on settings never tried on one job |
@@ -139,6 +141,7 @@ Source for modules, launch line and queues: the lab's Wuzhou job templates (`pbs
 | Pt₁ binding, pristine Mo-top / S-top / hollow | 3.36 / 2.83 / 2.74 eV (D3); 2.79 / 2.36 / 2.20 eV (PBE) | Step 03 |
 | S-vacancy formation, S-atom reference | 6.12 eV (D3); 5.54 eV (PBE) | Step 03 |
 | Memory, 6×6 relaxation (Γ) | ≤ 0.6 GB per rank, ~24 GB per node | Step 03 |
+| Vacancy interaction, 1nn pair | −0.049 eV (D3); −0.032 eV (PBE); `V2_far` baseline +0.028 / +0.034 | Step 04 |
 | Time, 6×6 relaxation (Γ, 1 node) | 0.8 h (pristine, 1 step) to 5.6 h (32 steps); ~10 min per ionic step | Step 03 |
 | SCF steps from scratch, 6×6 | ~21 with Pt; 60–76 for the empty vacancy (≈ 3× slower) | Step 03 `kcheck` |
 
