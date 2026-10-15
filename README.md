@@ -6,7 +6,7 @@ Throughout this file, **G1–G3** label the three gaps declared under [The gap](
 
 ## Status
 
-Last updated 2026-10-15. Steps 01–04 done. Step 05 (Ptₙ, n = 1–4) next.
+Last updated 2026-10-15. Steps 01–04 done. Step 05 round 1 (16 relaxations) built, ready to submit.
 
 | Step | Folder | State |
 |---|---|---|
@@ -15,7 +15,7 @@ Last updated 2026-10-15. Steps 01–04 done. Step 05 (Ptₙ, n = 1–4) next.
 | 02 Lattice constant and references | `02_references/` | **Done** (2026-10-12): a(MoS₂) = 3.1514 Å; a(Pt) = 3.926 Å |
 | 03 Benchmarks | `03_benchmarks/` | **Done** (2026-10-13): Pt₁ in vacancy 5.89 eV (Li 2017: 6.08); site ranking on pristine matches; Γ/450 eV confirmed on the 6×6 cell (≤ 1.6 meV) |
 | 04 Vacancy pairs | `04_vacancy_pairs/` | **Done** (2026-10-15): pairs interact by ≤ 0.07 eV (H0 holds); row of 3 attracts (−0.16 eV), triangle repels (+0.19 eV) |
-| 05 Ptₙ, n = 1–4 | `05_Ptn_small/` | Planned |
+| 05 Ptₙ, n = 1–4 | `05_Ptn_small/` | **Round 1 built** (2026-10-15): Pt₁ on new substrates, Pt₂ on P and V1 (16 jobs) |
 | 06 Ptₙ, n = 6, 9, 13 | `06_Ptn_large/` | Planned |
 | 07 Control | `07_control/` | Planned |
 | 08 Hydrogen adsorption | `08_hydrogen/` | Planned |
@@ -188,7 +188,7 @@ The scope is exactly what G1–G3 require.
 | 02 | MoS₂ lattice constant; bulk Pt, Pt atom, S atom | 10 jobs | All | Lattice constant fitted |
 | 03 | 6×6 benchmarks: P, V1, Pt₁ on three pristine sites, Pt₁ in V1 | 6 relaxations | All | Pt in V1 within ~0.2 eV of Li 2017 |
 | 04 | Vacancy pair and triplet energies (1st, 2nd, 3rd, far, vertical pair; row and triangle of 3), fixed cell | 7 relaxations | G1 | Random-vacancy model confirmed or revised |
-| 05 | Ptₙ, n = 1–4, on every substrate, by enumerating sites; addition-energy analysis | ~150 relaxations | G1 (H1, H2) | Lowest structure per (n, substrate) found |
+| 05 | Ptₙ, n = 1–4, on P, V1, V2_1nn, V3_row, V3_tri, by greedy search; addition-energy analysis | ~60 relaxations in 4 rounds | G1 (H1, H2) | Lowest structure per (n, substrate) found |
 | 06 | n = 6, 9, 13 on P, V1 and one patch, from Shi 2018 structures plus short AIMD annealing | ~50 relaxations | G1 (H3), G3 | Lowest structures found |
 | 07 | Control: same cluster (n = 1, 4, 6, 13) free, on P, on V1; Bader charges | ~12 jobs | G2 (H4) | Figure F3 |
 | 08 | ΔG_H* at 3–5 sites on the most stable Pt₁, Pt₄, Pt₆, Pt₁₃ | ~40 jobs | G3 (H5) | Figure F4 |
@@ -279,7 +279,34 @@ Li 2017 used PBE-D2 and Saidi 2015 plain PBE, so our PBE-D3 values should fall n
 
 **Cost.** Empty vacancies need 60–76 SCF steps from scratch; 3.5–10.8 h per relaxation (12–39 ks), 27 h for all 7 on 2 nodes; ≤ 0.6 GB per rank.
 
-### Steps 05–08
+### Step 05 — Ptₙ, n = 1–4 (greedy search)
+
+| | Question | Gap | Hypothesis |
+|---|---|---|---|
+| **RQ1** | At an isolated S vacancy, does a second Pt join the anchored one or prefer a fresh vacancy? | G1 | **H1.** It prefers a fresh vacancy. |
+| **RQ2** | Do neighbouring vacancies make small clusters more stable than separated atoms? | G1 | **H2.** Yes. |
+
+**Method.** Greedy search: build the cluster one atom at a time. At each n, relax every distinct start near the lowest 3 structures of n − 1, plus a few hand-built compact shapes at n = 3 and 4 (triangle, rhombus). Final lowest structures are checked against Shi 2018. About 60 relaxations instead of ~150 for full enumeration; the risk is missing a structure that is poor at small n but best at larger n.
+
+**Substrates.** `P`, `V1` (step 03); `V2_1nn`, `V3_row`, `V3_tri` (step 04, unrelaxed geometry rebuilt; the same arrangement).
+
+**Round 1** (16 relaxations; Pt₁ on `P` and in `V1` already exist in step 03)
+
+| Jobs | Starts |
+|---|---|
+| `n1_V2_1nn_*` | Pt in one vacancy; bridging the two; on the Mo shared by both |
+| `n1_V3_row_*` | Pt in the end vacancy; in the middle vacancy; bridging end and middle |
+| `n1_V3_tri_*` | Pt in one vacancy; above the exposed central Mo |
+| `n2_P_*` | First Pt at Mo-top; second tilted toward S-top, toward hollow, on top (vertical), or on the next Mo-top |
+| `n2_V1_*` | First Pt in the vacancy; second beside it (Mo side, hollow side), on top, or on the S-top 3.15 Å away |
+
+Starting heights follow the relaxed step-03 structures (Pt in vacancy 0.30 Å above the S plane; Mo-top 2.80 Å above the Mo plane); second Pt starts 2.5 Å from the first with Pt–S ≥ 2.2 Å.
+
+**Quantities.** Binding E_b = E(substrate) + n E(Pt atom) − E(Ptₙ/substrate). RQ1 test: E(Pt₂/V1) + E(V1) against 2 E(Pt₁/V1) (joining versus a fresh vacancy). Addition energy ΔE_n = E(Ptₙ₋₁) + E(Pt atom) − E(Ptₙ). Each with and without D3.
+
+**Cost.** ~16 relaxations × 3–8 h on 1 node; ~2–2.5 days on 2 nodes; ≤ 0.6 GB per rank. Two nodes because 4-node requests queue for days on the shared cluster.
+
+### Steps 06–08
 
 Designed in outline in the overview table. Each gets its steps table, validation targets and checks here when its inputs are built.
 
@@ -364,6 +391,8 @@ All 7 relaxations reached the required accuracy (15–38 ionic steps, 3.5–10.8
 - **Finite-size level.** `V2_far` is +0.03 eV rather than 0, which points to interaction with periodic images in the 6×6 cell. Relative to `V2_far`, the 1nn pair is −0.08 eV (D3) or −0.07 eV (plain PBE). Differences below about 0.03 eV are noise (fixed cell, forces to 0.02 eV/Å).
 - **Triplets are not sums of pairs.** The row is −0.155 eV against −0.054 eV from its pairs (extra −0.10 eV); the triangle is +0.189 eV against −0.147 eV from its pairs (extra +0.34 eV). The triangle leaves one Mo with 3 of its 6 S neighbours. Rows are the lowest arrangement, as in Le 2014.
 - **`V2_vert`** depends on D3 (−0.071 against −0.031 eV).
+![Step 04 vacancy interaction energies](assets/fig_step04_vacancy_interaction.png)
+
 - **Consequence for step 05:** `V3_tri` is a less likely substrate than `V3_row`. It stays in because plasma does not produce an equilibrium arrangement.
 
 From the literature alone (inference from combining papers with different setups; see section 6 of the literature review):
@@ -403,7 +432,6 @@ From the literature alone (inference from combining papers with different setups
 | `structures.py` | Shared builder: MoS₂ cells, vacancies, Pt placement, INCAR templates, and the function that writes a job folder. Imported by each step's `setup.py`. |
 | `.gitignore` | Keeps PDFs, POTCARs, and large or regenerable outputs out of version control. |
 
-**`assets/`** — figures used in this README. Empty so far.
 
 **`Literatures/`**
 
@@ -451,7 +479,22 @@ From the literature alone (inference from combining papers with different setups
 | `run_all.pbs` | Relaxes them on 2 nodes, one job per node; restarts from `CONTCAR` after a walltime cut; prints interaction energies at the end (bash and awk only). |
 | `V2_1nn/` … `V3_tri/` | Job folders. |
 
-**`05_Ptn_small/` to `08_hydrogen/`** — empty placeholders (`.gitkeep`) for the planned steps.
+**`05_Ptn_small/`**
+
+| File | Purpose |
+|---|---|
+| `setup.py` | Builds the round-1 jobs (Pt₁ on V2_1nn, V3_row, V3_tri; Pt₂ on P and V1). Options: `--a`, `--encut`. |
+| `run_all.pbs` | Relaxes them on 2 nodes, one job per node; restarts from `CONTCAR`; prints final E0 and Edisp of every job. |
+| `n1_*/`, `n2_*/` | Job folders. |
+
+**`06_Ptn_large/` to `08_hydrogen/`** — empty placeholders (`.gitkeep`) for the planned steps.
+
+**`assets/`**
+
+| File | Purpose |
+|---|---|
+| `plotstyle.py` | Shared figure style (font, sizes, colours) imported by every figure script. |
+| `fig_step04_vacancy_interaction.py` / `.png` | Step-04 interaction energies with a top-view sketch of each structure. |
 
 **Inside every job folder**
 
@@ -500,7 +543,7 @@ Tracked on purpose: `INCAR`, `KPOINTS`, `POSCAR`, `vasp_bin`, `CONTCAR`, `OSZICA
 
 1. ~~Steps 01–03~~ (done 2026-10-13, including the Γ/cutoff check).
 2. Decide on plain-PBE re-relaxation for the Pt₁-versus-bulk sign (+0.4 eV), if it matters for G1.
-3. Design step 05 (Ptₙ, n = 1–4): substrates `P`, `V1`, `V2_1nn`, `V3_row`, `V3_tri`.
+3. Run step 05 round 1: `qsub run_all.pbs` in `05_Ptn_small` (~2–2.5 days on 2 nodes); then build round 2 from its lowest structures.
 5. Cited-by check on Li 2017 and Shi 2018 (confirms N1).
 6. Read the Yan 2025 supporting information (it may contain part of the G2 control).
 7. Decide the largest cluster size (Pt₁₃ or Pt₆), then design step 04 and step 05 inputs.

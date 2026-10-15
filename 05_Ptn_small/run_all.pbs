@@ -1,0 +1,70 @@
+#!/bin/bash
+# Step 05 round 1: relax the 16 Pt1/Pt2 jobs (6x6, Gamma), one job per node at a time, on 2 nodes.
+# Submit from inside 03_benchmarks:   qsub run_all.pbs      then:  cat run_all.log
+# Finished jobs are skipped. A relaxation cut off by the walltime restarts from its CONTCAR.
+# Needs make_potcar.sh one level up. Settings are those of steps 03-04, so no separate test job.
+#PBS -N p2_n1
+#PBS -q std40
+#PBS -l nodes=2:ppn=40
+#PBS -V
+#PBS -l walltime=168:00:00
+#PBS -j oe
+
+module load intel/intel2020
+module load vasp/vasp544elpa
+export VASP_PP_PATH=/public/shared-data/pot/vasp/544/PAW_PBE
+
+cd "$PBS_O_WORKDIR"
+REPO=$(cd .. && pwd)
+LOG=run_all.log
+for el in Mo_pv S Pt; do
+  [ -f "$VASP_PP_PATH/$el/POTCAR" ] || { echo "STOP: $VASP_PP_PATH/$el/POTCAR not found" | tee -a $LOG; exit 1; }
+done
+[ -f "$REPO/make_potcar.sh" ] || { echo "STOP: make_potcar.sh must sit next to 05_Ptn_small" | tee -a $LOG; exit 1; }
+
+JOBS=$(find . -name INCAR | sed 's|/INCAR$||' | sort)
+find . -name .claimed -type d -exec rmdir {} + 2>/dev/null
+echo "=== $(date '+%F %T')  job $PBS_JOBID on: $(sort -u $PBS_NODEFILE | tr '\n' ' ')" >> $LOG
+
+worker() {
+  local host=$1
+  for d in $JOBS; do
+    grep -q "General timing" "$d/OUTCAR" 2>/dev/null && continue
+    mkdir "$d/.claimed" 2>/dev/null || continue
+    (
+      cd "$d" || exit 1
+      [ -f POTCAR ] || bash "$REPO/make_potcar.sh" > /dev/null || { echo "$d  POTCAR FAILED" >> "$PBS_O_WORKDIR/$LOG"; exit 1; }
+      if [ -s CONTCAR ] && [ -f OUTCAR ]; then                       # interrupted earlier: continue from CONTCAR
+        [ -f POSCAR.orig ] || cp POSCAR POSCAR.orig
+        cp CONTCAR POSCAR; echo "$d  restarting from CONTCAR" >> "$PBS_O_WORKDIR/$LOG"
+      fi
+      bin=$(cat vasp_bin); command -v "$bin" > /dev/null || bin=vasp_std
+      t0=$SECONDS
+      mpirun -np 40 -hosts $host -genv I_MPI_FABRICS=shm:ofi "$bin" > vasp.out 2>&1
+      nelm=$(grep -E "^ *NELM *=" INCAR | awk -F= '{print $2+0}')
+      steps=$(awk '/^[A-Z]+ *: *[0-9]+/{n++} /F=/{s=n; n=0} END{print s+0}' OSZICAR 2>/dev/null)
+      nion=$(grep -c "F=" OSZICAR 2>/dev/null)
+      if ! grep -q "General timing" OUTCAR 2>/dev/null; then st=FAILED
+      elif [ "$steps" -ge "$nelm" ]; then st="UNCONVERGED($steps/$nelm)"
+      elif ! grep -q "reached required accuracy" OUTCAR; then st="NOT_RELAXED($nion ionic)"
+      else st="ok($nion ionic steps)"; fi
+      mem=$(grep -i "maximum memory used" OUTCAR 2>/dev/null | awk '{printf "%.1f GB", $5/1048576}')
+      echo "$d  $host  $bin  $((SECONDS - t0)) s  mem=${mem:-n/a}  $st" >> "$PBS_O_WORKDIR/$LOG"
+    )
+    rmdir "$d/.claimed"
+  done
+}
+
+for h in $(sort -u $PBS_NODEFILE); do worker "$h" & done
+wait
+
+# ---- report: final E0 and Edisp of every job (binding energies are worked out from these)
+{
+  echo "--- final energies (eV)"
+  for d in $JOBS; do
+    e=$(awk '/F=/{for(i=1;i<=NF;i++) if($i=="E0=") e=$(i+1)} END{print e}' $d/OSZICAR 2>/dev/null)
+    x=$(grep "Edisp" $d/OUTCAR 2>/dev/null | tail -1 | awk '{print $NF}')
+    printf "  %-22s E0 %14s   Edisp %10s\n" "${d#./}" "${e:-missing}" "${x:-missing}"
+  done
+} >> $LOG
+echo "=== $(date '+%F %T')  done" >> $LOG
