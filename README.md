@@ -6,7 +6,7 @@ Throughout this file, **G1–G3** label the three gaps declared under [The gap](
 
 ## Status
 
-Last updated 2026-10-15. Steps 01–04 done. Step 05 (full search, 358 screening relaxations on 2 fat96 nodes) built, ready to submit.
+Last updated 2026-10-15. Steps 01–04 done. Step 05 stage 1 (358 screening relaxations, 2 fat96 nodes) queued as job 217611.
 
 | Step | Folder | State |
 |---|---|---|
@@ -15,7 +15,7 @@ Last updated 2026-10-15. Steps 01–04 done. Step 05 (full search, 358 screening
 | 02 Lattice constant and references | `02_references/` | **Done** (2026-10-12): a(MoS₂) = 3.1514 Å; a(Pt) = 3.926 Å |
 | 03 Benchmarks | `03_benchmarks/` | **Done** (2026-10-13): Pt₁ in vacancy 5.89 eV (Li 2017: 6.08); site ranking on pristine matches; Γ/450 eV confirmed on the 6×6 cell (≤ 1.6 meV) |
 | 04 Vacancy pairs | `04_vacancy_pairs/` | **Done** (2026-10-15): pairs interact by ≤ 0.07 eV (H0 holds); row of 3 attracts (−0.16 eV), triangle repels (+0.19 eV) |
-| 05 Ptₙ, n = 1–4 | `05_Ptn_small/` | **Built** (2026-10-15): full search, 358 screening starts + ~60 refinements, 2 fat96 nodes |
+| 05 Ptₙ, n = 1–4 | `05_Ptn_small/` | **Queued** (2026-10-15, job 217611, fat96): stage 1, 358 screening starts; stage 2 (~60 refinements) after |
 | 06 Ptₙ, n = 6, 9, 13 | `06_Ptn_large/` | Planned |
 | 07 Control | `07_control/` | Planned |
 | 08 Hydrogen adsorption | `08_hydrogen/` | Planned |
@@ -288,7 +288,12 @@ Li 2017 used PBE-D2 and Saidi 2015 plain PBE, so our PBE-D3 values should fall n
 
 **Substrates.** `P`, `V1` (step 03); `V2_1nn`, `V3_row`, `V3_tri` (step 04 arrangements, rebuilt from ideal positions).
 
-**Starts** (`setup.py`, all automatic)
+**How the Pt start structures are chosen** (`setup.py`, all automatic)
+
+![How the step-05 start structures are chosen](assets/fig_step05_start_rules.png)
+
+*A: every site within 3.3 Å of a vacancy is a candidate (here around `V1`). B: each site type starts at the height Pt took in the step-03 relaxations. C: Pt on sites 3.15 Å apart stay at site height; on sites only 1.82 Å apart the upper Pt is lifted until Pt–Pt = 2.5 Å, which builds compact and 3D clusters. D: starts related by a rotation or mirror of the substrate are counted once.*
+
 
 | Rule | Choice | Why |
 |---|---|---|
@@ -308,6 +313,8 @@ Li 2017 used PBE-D2 and Saidi 2015 plain PBE, so our PBE-D3 values should fall n
 | `V3_row` | 15 | 1 | 1 | 13 | 30 |
 | `V3_tri` | 7 | 1 | 1 | 6 | 15 |
 | **All** | | | | | **358** |
+
+All 358 starts are drawn in [`assets/fig_step05_starts.png`](assets/fig_step05_starts.png) (one tile per start; dark blue = Pt in a vacancy, blue = surface site, orange = lifted Pt); `screen/manifest.txt` lists each start's sites and heights.
 
 **Two stages.** Stage 1 relaxes every start loosely (`PREC = Normal`, `EDIFF = 1E-4`, `EDIFFG = −0.10`). Stage 2 relaxes the lowest 3 per (substrate, n), about 60 structures, from their stage-1 `CONTCAR` with the standard settings. Distinct structures that relax to the same minimum are merged before stage 2.
 
@@ -506,6 +513,8 @@ From the literature alone (inference from combining papers with different setups
 | File | Purpose |
 |---|---|
 | `plotstyle.py` | Shared figure style (font, sizes, colours) imported by every figure script. |
+| `fig_step05_start_rules.py` / `.png` | How step-05 starts are chosen: candidate sites, starting heights, spacing rule, symmetry merge. |
+| `fig_step05_starts.py` / `.png` | All 358 step-05 screening starts, one top-view tile each. |
 | `fig_step04_vacancy_interaction.py` / `.png` | Step-04 interaction energies with a top-view sketch of each structure. |
 
 **Inside every job folder**

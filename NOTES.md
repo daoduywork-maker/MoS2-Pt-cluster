@@ -93,6 +93,7 @@ Source for modules, launch line and queues: the lab's Wuzhou job templates (`pbs
 | 2026-10-13 | 03 `run_all.pbs` (other 5) | 217591 | 2 × std40 (node12, node9) | **Done** 00:49–12:42: all `ok`. P 1 ionic step (2978 s); hollow 16 (9625 s); Mo-top 32 (19795 s); S-top 12 (13483 s); V1 29 (20023 s); 0.6 GB per rank. |
 | 2026-10-13 | 03 `kcheck.pbs` (8 single points) | 217594 | 2 × std40 (node12, node9) | **Done** 14:01–22:00: all `ok`, ≤ 0.7 GB per rank. Binding change vs Γ/450 eV: e550 −0.4, k2 +1.5, k3 +1.5 meV (plain PBE the same). Pt1_V1 jobs 21 SCF; V1 jobs 60–76 SCF. Times: Γ 26–35 min (Pt1_V1), 78–98 min (V1); k2 1.0 h / 3.7 h; k3 1.6 h / 4.6 h. |
 | 2026-10-13 | 04 `run_all.pbs` | 217598 | 2 × std40 (node12, node9) | **Done** 23:20 → 02:53 next day (27 h): all 7 `ok`, ≤ 0.6 GB per rank. Ionic steps / time: 1nn 36 / 26623 s; 2nn 35 / 25138 s; 3nn 37 / 26385 s; far 30 / 21004 s; vert 15 / 12752 s; row 38 / 29882 s; tri 36 / 38795 s. Interaction energies in README. |
+| 2026-10-15 | 05 `run_all.pbs` stage 1 (358 screens) | 217611 | 2 × fat96 | Queued 12:21. fat96 nodes 1–2 were free at 09:52 but taken just before submission; waiting in the fat96 queue. |
 
 ## Decisions
 
