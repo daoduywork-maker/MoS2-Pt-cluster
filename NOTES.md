@@ -61,10 +61,11 @@ Source for modules, launch line and queues: the lab's Wuzhou job templates (`pbs
     qsub run_all.pbs                            # 7 relaxations on 2 nodes, ~1 day
     cat run_all.log                             # status per job, then interaction energies (negative = attract)
 
-    # step 05 round 1 on the cluster
+    # step 05 on the cluster (fat96, 2 nodes, 6 jobs at once)
     cd 05_Ptn_small
-    qsub run_all.pbs                            # 16 relaxations on 2 nodes, ~2-2.5 days
-    cat run_all.log                             # status per job, then final E0 and Edisp of every job
+    qsub run_all.pbs                            # stage 1: 358 loose relaxations in screen/, ~7-8 days
+    cat run_all.log                             # one line per finished job: status, E0, Edisp
+    qsub -v STAGE=refine run_all.pbs            # stage 2: after refine_list.txt is written (lowest 3 per substrate and n)
 
     # plain-PBE energy of any finished job: E0 - Edisp
     grep -i edisp OUTCAR | tail -1
@@ -123,8 +124,9 @@ Source for modules, launch line and queues: the lab's Wuzhou job templates (`pbs
 | 2026-10-13 | Step 03 passes (Pt₁ in vacancy 5.89 eV vs Li 2017 6.08; pristine site ranking matches); no plain-PBE re-relaxation yet | No ranking changes between D3 and plain PBE |
 | 2026-10-13 | Step 04: 7 jobs (V2 at 1st/2nd/3rd/far, vertical V2, V3 row, V3 triangle around one Mo), fixed cell | User chose the recommended set; VASP 5.4.4 cannot relax in-plane only; row and triangle are step-05 substrates |
 | 2026-10-13 | Step 04 without a separate test job | Same settings as 03 `V1`, which ran cleanly; memory known (≤ 0.6 GB per rank) |
-| 2026-10-15 | Step 05 by greedy search (~60 jobs in 4 rounds), keeping the lowest 3 per step plus hand-built compact shapes at n = 3, 4 | User chose it over full enumeration (~150 jobs) |
-| 2026-10-15 | Step 05 on 2 nodes, not 4 | 42 of 44 nodes busy; 4-node jobs queue for days, 2 nodes start at once |
+| 2026-10-15 | Step 05 as a full symmetry-reduced search (plan B): 358 loose screens + ~60 standard refinements | User wanted the whole landscape; greedy (~60 jobs) and a lattice-only search (~130) were set aside |
+| 2026-10-15 | Step 05 on 2 fat96 nodes (251 GB, 96 cores), 3 jobs × 32 cores per node | std40 spare nodes belong to partly used 4-node groups; fat96 idle and open (no ACL) |
+| 2026-10-15 | Round-1 greedy jobs (16) moved to `_to_delete/` unsubmitted | Replaced by the full search |
 | 2026-10-15 | Figures share `assets/plotstyle.py` (DejaVu Sans 9 pt; PBE+D3 #2a78d6, plain PBE #eb6834) | User wants one figure format across the project |
 | 2026-10-15 | Step 04 passes: pair interactions ≤ 0.07 eV (H0 holds); triplets are not pair-additive (row −0.155, triangle +0.189 eV) | Fixed cell, D3 and plain PBE agree on sign except `V2_vert` magnitude |
 | 2026-10-13 | Γ and 450 eV kept for all 6×6 work | `kcheck`: binding changes ≤ 1.6 meV at 550 eV, 2×2×1, 3×3×1 |

@@ -1,0 +1,27 @@
+SYSTEM  = P_n4_059 screen a=3.1514
+ENCUT   = 450
+PREC    = Normal
+EDIFF   = 1E-4
+ALGO    = Normal
+NELM    = 200
+NELMIN  = 6
+LASPH   = .TRUE.
+IVDW    = 12          ! D3 with Becke-Johnson damping
+LWAVE   = .FALSE.
+LCHARG  = .FALSE.
+NCORE   = 4
+ISPIN   = 2
+MAGMOM  = 36*0.5 72*0.0 4*1.0
+ISMEAR  = 0
+SIGMA   = 0.05
+AMIX    = 0.2         ! gentle mixing against charge sloshing in the vacuum
+BMIX    = 0.0001
+AMIX_MAG = 0.8
+BMIX_MAG = 0.0001
+LREAL   = Auto
+IBRION  = 2
+NSW     = 150
+ISIF    = 2
+EDIFFG  = -0.10
+LDIPOL  = .TRUE.
+IDIPOL  = 3
